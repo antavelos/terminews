@@ -1,6 +1,8 @@
 package rss
 
 import (
+	"errors"
+	"fmt"
 	"github.com/antavelos/terminews/news"
 	"github.com/mmcdole/gofeed"
 )
@@ -9,7 +11,7 @@ func Retrieve(url string) (news.Events, error) {
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL(url)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("Couldn't retrieve data from: '%v'", url))
 	}
 
 	var events news.Events
