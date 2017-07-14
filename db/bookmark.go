@@ -55,7 +55,7 @@ func GetBookmarkById(db *sql.DB, id int) Bookmark {
 	defer stmt.Close()
 
 	var b Bookmark
-	err = stmt.QueryRow(string(id)).Scan(&b.Id, &b.Title, &b.Url)
+	err = stmt.QueryRow(id).Scan(&b.Id, &b.Title, &b.Url)
 	if err != nil {
 		panic(err)
 	}

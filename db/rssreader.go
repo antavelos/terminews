@@ -53,7 +53,7 @@ func GetRssReaderById(db *sql.DB, id int) RssReader {
 	defer stmt.Close()
 
 	var rr RssReader
-	err = stmt.QueryRow(string(id)).Scan(&rr.Id, &rr.Name, &rr.Url)
+	err = stmt.QueryRow(id).Scan(&rr.Id, &rr.Name, &rr.Url)
 	if err != nil {
 		panic(err)
 	}
