@@ -40,8 +40,12 @@ func TestRssReader(t *testing.T) {
 		AddRssReader(sqldb, item)
 	}
 
-	result := GetRssReaders(sqldb)
+	result, _ := GetRssReaders(sqldb)
 	t.Log(result)
+	if len(result) != 2 {
+		t.Errorf("Found %v RssReader records %v, want %v",
+			len(result), len(items))
+	}
 	for i, res := range result {
 		if res.Name != items[i].Name {
 			t.Errorf("RssReader record %v has name %v, want %v",
@@ -49,11 +53,27 @@ func TestRssReader(t *testing.T) {
 		}
 	}
 
-	record := GetRssReaderById(sqldb, 1)
+	record, _ := GetRssReaderById(sqldb, 1)
 	t.Log(record)
 	if record.Name != items[0].Name {
 		t.Errorf("RssReader record %v has name %v, want %v",
 			record.Id, record.Name, items[0].Name)
+	}
+
+	_, err := GetRssReaderById(sqldb, 12345)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
+	}
+
+	err = DeleteRssReader(sqldb, 12345)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
+	}
+
+	DeleteRssReader(sqldb, 1)
+	_, err = GetRssReaderById(sqldb, 1)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
 	}
 }
 
@@ -67,8 +87,12 @@ func TestBookmark(t *testing.T) {
 		AddBookmark(sqldb, item)
 	}
 
-	result := GetBookmarks(sqldb)
+	result, _ := GetBookmarks(sqldb)
 	t.Log(result)
+	if len(result) != 2 {
+		t.Errorf("Found %v Bookmark records %v, want %v",
+			len(result), len(items))
+	}
 	for i, res := range result {
 		if res.Title != items[i].Title {
 			t.Errorf("Bookmark record %v has title %v, want %v",
@@ -76,10 +100,26 @@ func TestBookmark(t *testing.T) {
 		}
 	}
 
-	record := GetBookmarkById(sqldb, 1)
+	record, _ := GetBookmarkById(sqldb, 1)
 	t.Log(record)
 	if record.Title != items[0].Title {
 		t.Errorf("Bookmark record %v has title %v, want %v",
 			record.Id, record.Title, items[0].Title)
+	}
+
+	_, err := GetBookmarkById(sqldb, 12345)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
+	}
+
+	err = DeleteBookmark(sqldb, 12345)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
+	}
+
+	DeleteBookmark(sqldb, 1)
+	_, err = GetBookmarkById(sqldb, 1)
+	if _, ok := err.(NotFound); !ok {
+		t.Errorf("Expected NotFound error for id 12345")
 	}
 }

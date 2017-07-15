@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -21,49 +22,51 @@ func GetBookmarkSql() string {
     );`
 }
 
-func GetBookmarks(db *sql.DB) []Bookmark {
+func GetBookmarks(db *sql.DB) ([]Bookmark, error) {
 	sql_readall := `
     SELECT Id, Title, Url FROM bookmark
     ORDER BY datetime(CreatedAt) ASC
     `
 
 	rows, err := db.Query(sql_readall)
-	if err != nil {
-		panic(err)
-	}
 	defer rows.Close()
+	if err != nil {
+		return nil, DbError(err.Error())
+	}
 
 	var result []Bookmark
 	for rows.Next() {
 		b := Bookmark{}
-		err := rows.Scan(&b.Id, &b.Title, &b.Url)
-		if err != nil {
-			panic(err)
+		if err := rows.Scan(&b.Id, &b.Title, &b.Url); err != nil {
+			return nil, DbError(err.Error())
 		}
 		result = append(result, b)
 	}
-	return result
+	return result, nil
 }
 
-func GetBookmarkById(db *sql.DB, id int) Bookmark {
+func GetBookmarkById(db *sql.DB, id int) (Bookmark, error) {
 	sql_readone := `SELECT Id, Title, Url FROM bookmark WHERE id = ?`
 
 	stmt, err := db.Prepare(sql_readone)
-	if err != nil {
-		panic(err)
-	}
 	defer stmt.Close()
 
-	var b Bookmark
-	err = stmt.QueryRow(id).Scan(&b.Id, &b.Title, &b.Url)
 	if err != nil {
-		panic(err)
+		return Bookmark{}, DbError(err.Error())
 	}
 
-	return b
+	var b Bookmark
+	if err = stmt.QueryRow(id).Scan(&b.Id, &b.Title, &b.Url); err != nil {
+		if err == sql.ErrNoRows {
+			return Bookmark{}, NotFound(fmt.Sprintf("Bookmark not found for id: %v", id))
+		}
+		return Bookmark{}, DbError(err.Error())
+	}
+
+	return b, nil
 }
 
-func AddBookmark(db *sql.DB, b Bookmark) {
+func AddBookmark(db *sql.DB, b Bookmark) error {
 	sql_additem := `
     INSERT OR REPLACE INTO bookmark(
         Title,
@@ -73,13 +76,34 @@ func AddBookmark(db *sql.DB, b Bookmark) {
     `
 
 	stmt, err := db.Prepare(sql_additem)
-	if err != nil {
-		panic(err)
-	}
 	defer stmt.Close()
-
-	_, err = stmt.Exec(b.Title, b.Url)
 	if err != nil {
-		panic(err)
+		return DbError(err.Error())
 	}
+
+	if _, err = stmt.Exec(b.Title, b.Url); err != nil {
+		return DbError(err.Error())
+	}
+
+	return nil
+}
+
+func DeleteBookmark(db *sql.DB, id int) error {
+	if _, err := GetBookmarkById(db, id); err != nil {
+		return NotFound(fmt.Sprintf("Bookmark not found for id: %v", id))
+	}
+
+	sql_delete := `DELETE FROM bookmark WHERE id = ?`
+
+	stmt, err := db.Prepare(sql_delete)
+	defer stmt.Close()
+	if err != nil {
+		return DbError(err.Error())
+	}
+
+	if _, err = stmt.Exec(id); err != nil {
+		return DbError(err.Error())
+	}
+
+	return nil
 }
