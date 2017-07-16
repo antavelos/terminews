@@ -30,7 +30,7 @@ func GetBookmarks(db *sql.DB) ([]Bookmark, error) {
 
 	rows, err := db.Query(sql_readall)
 	if err != nil {
-		return nil, DbError(err.Error())
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -38,7 +38,7 @@ func GetBookmarks(db *sql.DB) ([]Bookmark, error) {
 	for rows.Next() {
 		b := Bookmark{}
 		if err := rows.Scan(&b.Id, &b.Title, &b.Url); err != nil {
-			return nil, DbError(err.Error())
+			return nil, err
 		}
 		result = append(result, b)
 	}
@@ -50,7 +50,7 @@ func GetBookmarkById(db *sql.DB, id int) (Bookmark, error) {
 
 	stmt, err := db.Prepare(sql_readone)
 	if err != nil {
-		return Bookmark{}, DbError(err.Error())
+		return Bookmark{}, err
 	}
 	defer stmt.Close()
 
@@ -59,7 +59,7 @@ func GetBookmarkById(db *sql.DB, id int) (Bookmark, error) {
 		if err == sql.ErrNoRows {
 			return Bookmark{}, NotFound(fmt.Sprintf("Bookmark not found for id: %v", id))
 		}
-		return Bookmark{}, DbError(err.Error())
+		return Bookmark{}, err
 	}
 
 	return b, nil
@@ -76,12 +76,12 @@ func AddBookmark(db *sql.DB, b Bookmark) error {
 
 	stmt, err := db.Prepare(sql_additem)
 	if err != nil {
-		return DbError(err.Error())
+		return err
 	}
 	defer stmt.Close()
 
 	if _, err = stmt.Exec(b.Title, b.Url); err != nil {
-		return DbError(err.Error())
+		return err
 	}
 
 	return nil
@@ -96,12 +96,12 @@ func DeleteBookmark(db *sql.DB, id int) error {
 
 	stmt, err := db.Prepare(sql_delete)
 	if err != nil {
-		return DbError(err.Error())
+		return err
 	}
 	defer stmt.Close()
 
 	if _, err = stmt.Exec(id); err != nil {
-		return DbError(err.Error())
+		return err
 	}
 
 	return nil

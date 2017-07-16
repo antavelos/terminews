@@ -2,20 +2,8 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 )
-
-type DbError string
-type NotFound string
-
-func (e DbError) Error() string {
-	return fmt.Sprintf("Generic DB error: %v", e)
-}
-
-func (e NotFound) Error() string {
-	return string(e)
-}
 
 func InitDB(filepath string) *sql.DB {
 	db, err := sql.Open("sqlite3", filepath)

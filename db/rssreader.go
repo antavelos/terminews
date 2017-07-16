@@ -30,7 +30,7 @@ func GetRssReaders(db *sql.DB) ([]RssReader, error) {
 
 	rows, err := db.Query(sql_readall)
 	if err != nil {
-		return nil, DbError(err.Error())
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -38,7 +38,7 @@ func GetRssReaders(db *sql.DB) ([]RssReader, error) {
 	for rows.Next() {
 		rr := RssReader{}
 		if err := rows.Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
-			return nil, DbError(err.Error())
+			return nil, err
 		}
 		records = append(records, rr)
 	}
@@ -50,7 +50,7 @@ func GetRssReaderById(db *sql.DB, id int) (RssReader, error) {
 
 	stmt, err := db.Prepare(sql_readone)
 	if err != nil {
-		return RssReader{}, DbError(err.Error())
+		return RssReader{}, err
 	}
 	defer stmt.Close()
 
@@ -59,7 +59,7 @@ func GetRssReaderById(db *sql.DB, id int) (RssReader, error) {
 		if err == sql.ErrNoRows {
 			return RssReader{}, NotFound(fmt.Sprintf("RssReader not found for id: %v", id))
 		}
-		return RssReader{}, DbError(err.Error())
+		return RssReader{}, err
 	}
 
 	return rr, nil
@@ -76,12 +76,12 @@ func AddRssReader(db *sql.DB, rr RssReader) error {
 
 	stmt, err := db.Prepare(sql_additem)
 	if err != nil {
-		return DbError(err.Error())
+		return err
 	}
 	defer stmt.Close()
 
 	if _, err = stmt.Exec(rr.Name, rr.Url); err != nil {
-		return DbError(err.Error())
+		return err
 	}
 
 	return nil
@@ -96,12 +96,12 @@ func DeleteRssReader(db *sql.DB, id int) error {
 
 	stmt, err := db.Prepare(sql_delete)
 	if err != nil {
-		return DbError(err.Error())
+		return err
 	}
 	defer stmt.Close()
 
 	if _, err = stmt.Exec(id); err != nil {
-		return DbError(err.Error())
+		return err
 	}
 
 	return nil
