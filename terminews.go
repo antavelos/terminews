@@ -4,12 +4,12 @@ import (
 	// "flag"
 	// "fmt"
 	// "github.com/antavelos/terminews/rss"
-	"github.com/antavelos/terminews/ui"
+	"github.com/antavelos/terminews/ctrl"
 	// "github.com/fatih/color"
 )
 
 func main() {
-	ui.Ui()
+	ctrl.Main()
 	// flag.Usage = func() {
 	// 	fmt.Println("foo bar")
 	// }

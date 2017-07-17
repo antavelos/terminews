@@ -3,7 +3,7 @@ package ui
 import (
 	"fmt"
 	gc "github.com/rthornton128/goncurses"
-	// "log"
+	"log"
 )
 
 const (
@@ -150,7 +150,7 @@ func Init() {
 
 	Stdscr, err = gc.Init()
 	if err != nil {
-		panic(err)
+		handleError(err)
 	}
 
 	maxY, maxX = Stdscr.MaxYX()
@@ -173,19 +173,19 @@ func CreateRssReadersWindow(rssReadersData []string) {
 	for i, d := range rssReadersData {
 		item := &TMenuItem{}
 		if err = item.Create(i+1, d, d); err != nil {
-			panic(err)
+			handleError(err)
 		}
 		RssReadersMenuItems = append(RssReadersMenuItems, item)
 	}
 	// Menu
 	RssReadersMenu = &TMenu{}
 	if err = RssReadersMenu.Create(RssReadersMenuItems); err != nil {
-		panic(err)
+		handleError(err)
 	}
 	// Window
 	RssReadersWin = &TWindow{}
 	if err = RssReadersWin.Create("My RSS Readers", maxY, maxX/4, 0, 0); err != nil {
-		panic(err)
+		handleError(err)
 	}
 	Windows = append(Windows, RssReadersWin)
 
@@ -203,19 +203,19 @@ func CreateNewsData(newsData []string) {
 	for i, d := range newsData {
 		item := &TMenuItem{}
 		if err = item.Create(i+1, d, d); err != nil {
-			panic(err)
+			handleError(err)
 		}
 		NewsMenuItems = append(NewsMenuItems, item)
 	}
 	// Menu
 	NewsMenu = &TMenu{}
 	if err = NewsMenu.Create(NewsMenuItems); err != nil {
-		panic(err)
+		handleError(err)
 	}
 
 	NewsWin = &TWindow{}
 	if err = NewsWin.Create("News from", maxY, (maxX*3)/4, 0, maxX/4); err != nil {
-		panic(err)
+		handleError(err)
 	}
 	Windows = append(Windows, NewsWin)
 
@@ -226,6 +226,11 @@ func CreateNewsData(newsData []string) {
 
 	NewsMenu.Post()
 	NewsWin.Refresh()
+}
+
+func handleError(err error) {
+	gc.End()
+	log.Fatal(err)
 }
 
 func Ui() {
