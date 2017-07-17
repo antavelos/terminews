@@ -18,6 +18,7 @@ func (e Event) String() string {
 	yellow := color.New(color.FgYellow, color.Bold).SprintFunc()
 	magenta := color.New(color.FgMagenta).SprintFunc()
 	faint := color.New(color.Faint).SprintFunc()
+
 	return fmt.Sprintf("%v, %v\n     %v\n     %v",
 		yellow(e.Title), magenta(e.Date), faint(e.Link), e.Description)
 }
