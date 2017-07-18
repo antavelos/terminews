@@ -22,13 +22,13 @@ func GetBookmarkSql() string {
     );`
 }
 
-func GetBookmarks(db *sql.DB) ([]Bookmark, error) {
+func (tdb *TDB) GetBookmarks() ([]Bookmark, error) {
 	sql_readall := `
     SELECT Id, Title, Url FROM bookmark
     ORDER BY datetime(CreatedAt) ASC
     `
 
-	rows, err := db.Query(sql_readall)
+	rows, err := tdb.Query(sql_readall)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +45,10 @@ func GetBookmarks(db *sql.DB) ([]Bookmark, error) {
 	return result, nil
 }
 
-func GetBookmarkById(db *sql.DB, id int) (Bookmark, error) {
+func (tdb *TDB) GetBookmarkById(id int) (Bookmark, error) {
 	sql_readone := `SELECT Id, Title, Url FROM bookmark WHERE id = ?`
 
-	stmt, err := db.Prepare(sql_readone)
+	stmt, err := tdb.Prepare(sql_readone)
 	if err != nil {
 		return Bookmark{}, err
 	}
@@ -65,7 +65,7 @@ func GetBookmarkById(db *sql.DB, id int) (Bookmark, error) {
 	return b, nil
 }
 
-func AddBookmark(db *sql.DB, b Bookmark) error {
+func (tdb *TDB) AddBookmark(b Bookmark) error {
 	sql_additem := `
     INSERT OR REPLACE INTO bookmark(
         Title,
@@ -74,7 +74,7 @@ func AddBookmark(db *sql.DB, b Bookmark) error {
     ) values(?, ?, CURRENT_TIMESTAMP)
     `
 
-	stmt, err := db.Prepare(sql_additem)
+	stmt, err := tdb.Prepare(sql_additem)
 	if err != nil {
 		return err
 	}
@@ -87,14 +87,14 @@ func AddBookmark(db *sql.DB, b Bookmark) error {
 	return nil
 }
 
-func DeleteBookmark(db *sql.DB, id int) error {
-	if _, err := GetBookmarkById(db, id); err != nil {
+func (tdb *TDB) DeleteBookmark(id int) error {
+	if _, err := tdb.GetBookmarkById(id); err != nil {
 		return NotFound(fmt.Sprintf("Bookmark not found for id: %v", id))
 	}
 
 	sql_delete := `DELETE FROM bookmark WHERE id = ?`
 
-	stmt, err := db.Prepare(sql_delete)
+	stmt, err := tdb.Prepare(sql_delete)
 	if err != nil {
 		return err
 	}

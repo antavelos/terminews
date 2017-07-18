@@ -22,13 +22,13 @@ func GetRssReaderSql() string {
     );`
 }
 
-func GetRssReaders(db *sql.DB) ([]RssReader, error) {
+func (tdb *TDB) GetRssReaders() ([]RssReader, error) {
 	sql_readall := `
     SELECT Id, Name, Url FROM rssreader
     ORDER BY datetime(CreatedAt) ASC
     `
 
-	rows, err := db.Query(sql_readall)
+	rows, err := tdb.Query(sql_readall)
 	if err != nil {
 		return nil, err
 	}
@@ -45,10 +45,10 @@ func GetRssReaders(db *sql.DB) ([]RssReader, error) {
 	return records, nil
 }
 
-func GetRssReaderById(db *sql.DB, id int) (RssReader, error) {
+func (tdb *TDB) GetRssReaderById(id int) (RssReader, error) {
 	sql_readone := `SELECT Id, Name, Url FROM rssreader WHERE id = ?`
 
-	stmt, err := db.Prepare(sql_readone)
+	stmt, err := tdb.Prepare(sql_readone)
 	if err != nil {
 		return RssReader{}, err
 	}
@@ -65,7 +65,7 @@ func GetRssReaderById(db *sql.DB, id int) (RssReader, error) {
 	return rr, nil
 }
 
-func AddRssReader(db *sql.DB, rr RssReader) error {
+func (tdb *TDB) AddRssReader(rr RssReader) error {
 	sql_additem := `
     INSERT OR REPLACE INTO rssreader(
         Name,
@@ -74,7 +74,7 @@ func AddRssReader(db *sql.DB, rr RssReader) error {
     ) values(?, ?, CURRENT_TIMESTAMP)
     `
 
-	stmt, err := db.Prepare(sql_additem)
+	stmt, err := tdb.Prepare(sql_additem)
 	if err != nil {
 		return err
 	}
@@ -87,14 +87,14 @@ func AddRssReader(db *sql.DB, rr RssReader) error {
 	return nil
 }
 
-func DeleteRssReader(db *sql.DB, id int) error {
-	if _, err := GetRssReaderById(db, id); err != nil {
+func (tdb *TDB) DeleteRssReader(id int) error {
+	if _, err := tdb.GetRssReaderById(id); err != nil {
 		return NotFound(fmt.Sprintf("RssReader not found for id: %v", id))
 	}
 
 	sql_delete := `DELETE FROM rssreader WHERE id = ?`
 
-	stmt, err := db.Prepare(sql_delete)
+	stmt, err := tdb.Prepare(sql_delete)
 	if err != nil {
 		return err
 	}

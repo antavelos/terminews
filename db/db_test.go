@@ -1,7 +1,6 @@
 package db
 
 import (
-	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"testing"
@@ -9,16 +8,16 @@ import (
 
 const dbpath = "test.db"
 
-var sqldb *sql.DB
+var tdb *TDB
 
 func SetUp() {
-	sqldb = InitDB(dbpath)
-	CreateTables(sqldb)
+	tdb, _ = InitDB(dbpath)
+	CreateTables(tdb)
 }
 
 func TearDown() {
-	DropTables(sqldb)
-	sqldb.Close()
+	DropTables(tdb)
+	tdb.Close()
 	os.Remove(dbpath)
 }
 
@@ -37,10 +36,10 @@ func TestRssReader(t *testing.T) {
 		RssReader{Name: "BBC", Url: "www.bbc.com"},
 	}
 	for _, item := range items {
-		AddRssReader(sqldb, item)
+		tdb.AddRssReader(item)
 	}
 
-	result, _ := GetRssReaders(sqldb)
+	result, _ := tdb.GetRssReaders()
 	t.Log(result)
 	if len(result) != 2 {
 		t.Errorf("Found %v RssReader records %v, want %v",
@@ -53,25 +52,25 @@ func TestRssReader(t *testing.T) {
 		}
 	}
 
-	record, _ := GetRssReaderById(sqldb, 1)
+	record, _ := tdb.GetRssReaderById(1)
 	t.Log(record)
 	if record.Name != items[0].Name {
 		t.Errorf("RssReader record %v has name %v, want %v",
 			record.Id, record.Name, items[0].Name)
 	}
 
-	_, err := GetRssReaderById(sqldb, 12345)
+	_, err := tdb.GetRssReaderById(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	err = DeleteRssReader(sqldb, 12345)
+	err = tdb.DeleteRssReader(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	DeleteRssReader(sqldb, 1)
-	_, err = GetRssReaderById(sqldb, 1)
+	tdb.DeleteRssReader(1)
+	_, err = tdb.GetRssReaderById(1)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
@@ -84,10 +83,10 @@ func TestBookmark(t *testing.T) {
 		Bookmark{Title: "some event2", Url: "www.news.com/some-event2"},
 	}
 	for _, item := range items {
-		AddBookmark(sqldb, item)
+		tdb.AddBookmark(item)
 	}
 
-	result, _ := GetBookmarks(sqldb)
+	result, _ := tdb.GetBookmarks()
 	t.Log(result)
 	if len(result) != 2 {
 		t.Errorf("Found %v Bookmark records %v, want %v",
@@ -100,25 +99,25 @@ func TestBookmark(t *testing.T) {
 		}
 	}
 
-	record, _ := GetBookmarkById(sqldb, 1)
+	record, _ := tdb.GetBookmarkById(1)
 	t.Log(record)
 	if record.Title != items[0].Title {
 		t.Errorf("Bookmark record %v has title %v, want %v",
 			record.Id, record.Title, items[0].Title)
 	}
 
-	_, err := GetBookmarkById(sqldb, 12345)
+	_, err := tdb.GetBookmarkById(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	err = DeleteBookmark(sqldb, 12345)
+	err = tdb.DeleteBookmark(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	DeleteBookmark(sqldb, 1)
-	_, err = GetBookmarkById(sqldb, 1)
+	tdb.DeleteBookmark(1)
+	_, err = tdb.GetBookmarkById(1)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
