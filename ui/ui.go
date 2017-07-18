@@ -72,7 +72,6 @@ func (tw *TWindow) Create(title string, h, w, y, x int) error {
 
 func (tw *TWindow) SetTitle(title string) {
 	tw.title = title
-	// _, mx := tw.MaxYX()
 	tw.MovePrint(1, (tw.w/2)-(len(title)/2), title)
 }
 

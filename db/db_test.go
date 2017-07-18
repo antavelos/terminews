@@ -12,11 +12,11 @@ var tdb *TDB
 
 func SetUp() {
 	tdb, _ = InitDB(dbpath)
-	CreateTables(tdb)
+	tdb.CreateTables()
 }
 
 func TearDown() {
-	DropTables(tdb)
+	tdb.DropTables()
 	tdb.Close()
 	os.Remove(dbpath)
 }

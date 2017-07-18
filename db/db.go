@@ -23,7 +23,7 @@ func InitDB(filepath string) (*TDB, error) {
 	return tdb, nil
 }
 
-func CreateTables(tdb *TDB) error {
+func (tdb *TDB) CreateTables() error {
 	ssql := []string{
 		GetRssReaderSql(),
 		GetBookmarkSql(),
@@ -38,7 +38,7 @@ func CreateTables(tdb *TDB) error {
 	return nil
 }
 
-func DropTables(tdb *TDB) error {
+func (tdb *TDB) DropTables() error {
 	ssql := []string{
 		"DROP TABLE rssreader;",
 		"DROP TABLE bookmark;",
@@ -51,8 +51,4 @@ func DropTables(tdb *TDB) error {
 	}
 
 	return nil
-}
-
-func PopulateDb(db *sql.DB) {
-
 }

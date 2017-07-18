@@ -1,7 +1,10 @@
 package ctrl
 
 import (
-	// "github.com/antavelos/terminews/db"s
+	"fmt"
+	"github.com/antavelos/terminews/db"
+	"github.com/antavelos/terminews/news"
+	"github.com/antavelos/terminews/rss"
 	"github.com/antavelos/terminews/ui"
 	gc "github.com/rthornton128/goncurses"
 	"log"
@@ -15,22 +18,24 @@ const (
 const (
 	FOCUSED_WINDOW   = 1
 	UNFOCUSED_WINDOW = 2
+	ERROR_WINDOW     = 3
 )
 
 var (
-	Stdscr                             *gc.Window
-	RssReadersWin, NewsWin             *ui.TWindow
-	RssReadersMenu, NewsMenu           *ui.TMenu
-	RssReadersMenuItems, NewsMenuItems []*ui.TMenuItem
-	Windows                            []*ui.TWindow
-	Panels                             []*gc.Panel
-	ActiveWindow                       int
+	tdb                                *db.TDB
+	stdscr                             *gc.Window
+	rssReadersWin, newsWin             *ui.TWindow
+	rssReadersMenu, newsMenu           *ui.TMenu
+	rssReadersMenuItems, newsMenuItems []*ui.TMenuItem
+	windows                            []*ui.TWindow
+	panels                             []*gc.Panel
+	activeWindow                       int
 	err                                error
 	maxX                               int
 	maxY                               int
 )
 
-func CreateRssReadersWindow(rssReadersData []string) error {
+func CreaterssReadersWindow(rssReadersData []string) error {
 
 	// MenuItems
 	for i, d := range rssReadersData {
@@ -38,59 +43,61 @@ func CreateRssReadersWindow(rssReadersData []string) error {
 		if err = item.Create(i+1, d, d); err != nil {
 			return err
 		}
-		RssReadersMenuItems = append(RssReadersMenuItems, item)
+		rssReadersMenuItems = append(rssReadersMenuItems, item)
 	}
 	// Menu
-	RssReadersMenu = &ui.TMenu{}
-	if err = RssReadersMenu.Create(RssReadersMenuItems); err != nil {
+	rssReadersMenu = &ui.TMenu{}
+	if err = rssReadersMenu.Create(rssReadersMenuItems); err != nil {
 		return err
 	}
 	// Window
-	RssReadersWin = &ui.TWindow{}
-	if err = RssReadersWin.Create("My RSS Readers", maxY, maxX/4, 0, 0); err != nil {
+	rssReadersWin = &ui.TWindow{}
+	if err = rssReadersWin.Create("My RSS Readers", maxY, maxX/4, 0, 0); err != nil {
 		return err
 	}
-	Windows = append(Windows, RssReadersWin)
+	windows = append(windows, rssReadersWin)
 
-	// attach RssReadersMenu on RssReadersWindow
-	RssReadersWin.AttachMenu(RssReadersMenu)
+	// attach rssReadersMenu on rssReadersWindow
+	rssReadersWin.AttachMenu(rssReadersMenu)
 
-	Panels = append(Panels, gc.NewPanel(RssReadersWin.Window))
+	panels = append(panels, gc.NewPanel(rssReadersWin.Window))
 
-	RssReadersMenu.Post()
-	RssReadersWin.Refresh()
+	rssReadersMenu.Post()
+	rssReadersWin.Refresh()
+	rssReadersWin.Focus(FOCUSED_WINDOW)
 
 	return nil
 }
 
-func CreateNewsData(newsData []string) error {
+func CreateNewsData(newsData []string, rrName string) error {
 	// MenuItems
 	for i, d := range newsData {
 		item := &ui.TMenuItem{}
 		if err = item.Create(i+1, d, d); err != nil {
 			return err
 		}
-		NewsMenuItems = append(NewsMenuItems, item)
+		newsMenuItems = append(newsMenuItems, item)
 	}
 	// Menu
-	NewsMenu = &ui.TMenu{}
-	if err = NewsMenu.Create(NewsMenuItems); err != nil {
+	newsMenu = &ui.TMenu{}
+	if err = newsMenu.Create(newsMenuItems); err != nil {
 		return err
 	}
 
-	NewsWin = &ui.TWindow{}
-	if err = NewsWin.Create("News from", maxY, (maxX*3)/4, 0, maxX/4); err != nil {
+	newsWin = &ui.TWindow{}
+	title := fmt.Sprintf("News from %v", rrName)
+	if err = newsWin.Create(title, maxY, (maxX*3)/4, 0, maxX/4); err != nil {
 		return err
 	}
-	Windows = append(Windows, NewsWin)
+	windows = append(windows, newsWin)
 
-	// attach NewsMenu on NewsWindow
-	NewsWin.AttachMenu(NewsMenu)
+	// attach newsMenu on newsWindow
+	newsWin.AttachMenu(newsMenu)
 
-	Panels = append(Panels, gc.NewPanel(NewsWin.Window))
+	panels = append(panels, gc.NewPanel(newsWin.Window))
 
-	NewsMenu.Post()
-	NewsWin.Refresh()
+	newsMenu.Post()
+	newsWin.Refresh()
 
 	return nil
 }
@@ -99,155 +106,136 @@ func CreateNewsData(newsData []string) error {
 func Free() {
 	var tmi *ui.TMenuItem
 
-	RssReadersMenu.UnPost()
-	NewsMenu.UnPost()
+	rssReadersMenu.UnPost()
+	newsMenu.UnPost()
 
-	for _, tmi = range RssReadersMenuItems {
+	for _, tmi = range rssReadersMenuItems {
 		tmi.MenuItem.Free()
 	}
-	for _, tmi = range NewsMenuItems {
+	for _, tmi = range newsMenuItems {
 		tmi.MenuItem.Free()
 	}
 
-	RssReadersMenu.Free()
-	NewsMenu.Free()
+	rssReadersMenu.Free()
+	newsMenu.Free()
 
 	gc.End()
 }
 
-func handleUIError(err error) {
+func handleUIFatalError(err error) {
 	gc.End()
 	log.Fatal(err)
 }
 
+func handleDBFatalError(err error) {
+	tdb.Close()
+	log.Fatal(err)
+}
+
+func handleNewsLoadError(rrName string) {
+	msg := fmt.Sprintf("Failed to load news from %v", rrName)
+	newsWin.SetTitle(msg)
+	newsWin.Focus(ERROR_WINDOW)
+	activeWindow = NEWS_WINDOW
+}
+
 func InitUI() error {
 
-	Stdscr, err = gc.Init()
+	stdscr, err = gc.Init()
 	if err != nil {
 		return err
 	}
 
-	maxY, maxX = Stdscr.MaxYX()
+	maxY, maxX = stdscr.MaxYX()
 	// Initial configuration
 	gc.StartColor()
 	gc.Raw(true)
 	gc.Echo(false)
 	gc.Cursor(0)
-	Stdscr.Keypad(true)
-	Stdscr.Clear()
+	stdscr.Keypad(true)
+	stdscr.Clear()
 
 	// Define color combinations
 	gc.InitPair(FOCUSED_WINDOW, gc.C_GREEN, gc.C_BLACK)
 	gc.InitPair(UNFOCUSED_WINDOW, gc.C_WHITE, gc.C_BLACK)
+	gc.InitPair(ERROR_WINDOW, gc.C_RED, gc.C_BLACK)
 
 	return nil
 }
 
-func Main() {
-
-	newsData := []string{
-		"Life inside ISIS bride camp: Fighting, sex obsessed fighters, 'jihadi Tinder'",
-		"Guns and money: Why US' top North Korea diplomat is in Southeast Asia",
-		"10 days of horror: Grisly killings stun a small town",
-		"Secret Service refutes Trump lawyer remarks",
-		"UAE denies report it orchestrated Qatar hack",
-		"Russia rejects any US conditions for return of seized compounds",
-		"Jordanian soldier gets life for killing US troops",
-		"Merkel rules out limiting number of refugees in Germany",
-		"Australian woman in US fatally shot by police officer",
-		"65 arrested in Europe-wide horsemeat scam",
-		"Gel is 5 times stronger than steel",
-		"Family finds clues to teen's suicide in blue whale paintings",
-		"Ex-Mexican president banned from Venezuela",
-		"Where North Korea's elite go for banned luxury goods",
-		"BBC makes history with 'Doctor Who' casting",
-		"Duchess of Cornwall speaks to CNN in rare interview",
-		"Actor Martin Landau dies at 89",
-		"Columbia University settles with student accused of sexual assault",
-		"Delta hits back after tweetstorm mix-up",
-		"What China's new GDP numbers reveal",
-		"Horror genre godfather George Romero dead at 77",
-		"Flash flood kills 7 from family",
-		"16 pilgrims die when bus falls into gorge",
-		"Iran sentences American to 10 years on spying conviction ",
-		"'No one ever helps us': Life after escaping conflict in Myanmar",
-		"$1 million in pot found in brand-new cars",
-		"Can artificial sweeteners cause weight gain?",
-		"F1 owners: British Grand Prix will stay",
-		"Mediterranean style diet may prevent dementia",
-		"Greatest golf links in the world",
-		"What did we learn from Mayweather vs. McGregor traveling circus?",
-		"That huge iceberg should freak you out. Here's why",
-		"Ubud: Inside Bali's cultural epicenter",
-		"Why Guinness tastes different in Africa",
-		"Roger Federer beats Cilic to clinch historic eighth Wimbledon title",
-		"Pink Floyd star defends his anti-Trump tour",
-		"Hamilton wins record 5th British GP",
-		"Who will win flying car race?",
-		"A new breed of supercar",
-		"Every airport should be like this",
-		"Republicans delay health vote after McCain has surgery",
-		"'Walking Dead' stuntman dies after fall on set",
-		"Why is ocean being pumped into desert?",
-		"Repairman gets stuck in ATM",
-		"Airline sends rapper's dog to wrong city",
-		"How to design the car of your dreams in VR ",
-		"How ISIS changed Iraqi schools",
-		"Is the fall of Mosul the fall of ISIS?",
-		"Why US' top N. Korea diplomat is in  Asia",
-	}
-	// Create RSS Readers menu
-	rssReadersData := []string{
-		"CNN World",
-		"BBC",
-		"NBC",
-		"Reuters",
-	}
-
-	if err := InitUI(); err != nil {
-		handleUIError(err)
-	}
-
-	if err := CreateRssReadersWindow(rssReadersData); err != nil {
-		handleUIError(err)
-	}
-
-	if err := CreateNewsData(newsData); err != nil {
-		handleUIError(err)
-	}
-
-	defer Free()
-
-	RssReadersWin.Focus(FOCUSED_WINDOW)
+func Loop() {
 	for {
-		RssReadersWin.Refresh()
-		NewsWin.Refresh()
+		rssReadersWin.Refresh()
+		newsWin.Refresh()
 
 		gc.Update()
-		switch ch := RssReadersWin.GetChar(); ch {
+		switch ch := rssReadersWin.GetChar(); ch {
 		case 'q':
-			RssReadersWin.Clear()
-			NewsWin.Clear()
+			rssReadersWin.Clear()
+			newsWin.Clear()
 			return
 		case gc.KEY_TAB:
-			ActiveWindow += 1
-			if ActiveWindow > 1 {
-				ActiveWindow = 0
+			activeWindow += 1
+			if activeWindow > 1 {
+				activeWindow = 0
 			}
-			Panels[ActiveWindow].Top()
-			for i, w := range Windows {
-				if i == ActiveWindow {
+			panels[activeWindow].Top()
+			for i, w := range windows {
+				if i == activeWindow {
 					w.Focus(FOCUSED_WINDOW)
 				} else {
 					w.Unfocus(UNFOCUSED_WINDOW)
 				}
 			}
 		default:
-			if ActiveWindow == RSS_READERS_WINDOW {
-				RssReadersMenu.Driver(gc.DriverActions[ch])
+			if activeWindow == RSS_READERS_WINDOW {
+				rssReadersMenu.Driver(gc.DriverActions[ch])
 			} else {
-				NewsMenu.Driver(gc.DriverActions[ch])
+				newsMenu.Driver(gc.DriverActions[ch])
 			}
 		}
 	}
+}
+
+func Main() {
+	var rssReaders []db.RssReader
+	var events []news.Event
+
+	// Init DB
+	if tdb, err = db.InitDB("./terminews.db"); err != nil {
+		handleDBFatalError(err)
+	}
+
+	// Init UI components
+	if err = InitUI(); err != nil {
+		handleUIFatalError(err)
+	}
+
+	// Load RSS Readers data
+	if rssReaders, err = tdb.GetRssReaders(); err != nil {
+		handleDBFatalError(err)
+	}
+	rssReadersData := make([]string, len(rssReaders))
+	for i, rr := range rssReaders {
+		rssReadersData[i] = rr.Name
+	}
+	if err = CreaterssReadersWindow(rssReadersData); err != nil {
+		handleUIFatalError(err)
+	}
+
+	// Load News
+	if events, err = rss.Retrieve(rssReaders[0].Url); err != nil {
+		handleNewsLoadError(rssReaders[0].Name)
+	}
+	newsData := make([]string, len(events))
+	for i, e := range events {
+		newsData[i] = e.Title
+	}
+	if err = CreateNewsData(newsData, rssReaders[0].Name); err != nil {
+		handleUIFatalError(err)
+	}
+
+	defer Free()
+
+	Loop()
 }

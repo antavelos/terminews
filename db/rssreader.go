@@ -29,10 +29,10 @@ func (tdb *TDB) GetRssReaders() ([]RssReader, error) {
     `
 
 	rows, err := tdb.Query(sql_readall)
+	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var records []RssReader
 	for rows.Next() {
@@ -49,10 +49,10 @@ func (tdb *TDB) GetRssReaderById(id int) (RssReader, error) {
 	sql_readone := `SELECT Id, Name, Url FROM rssreader WHERE id = ?`
 
 	stmt, err := tdb.Prepare(sql_readone)
+	defer stmt.Close()
 	if err != nil {
 		return RssReader{}, err
 	}
-	defer stmt.Close()
 
 	var rr RssReader
 	if err = stmt.QueryRow(id).Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
@@ -75,10 +75,10 @@ func (tdb *TDB) AddRssReader(rr RssReader) error {
     `
 
 	stmt, err := tdb.Prepare(sql_additem)
+	defer stmt.Close()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
 
 	if _, err = stmt.Exec(rr.Name, rr.Url); err != nil {
 		return err
@@ -95,10 +95,10 @@ func (tdb *TDB) DeleteRssReader(id int) error {
 	sql_delete := `DELETE FROM rssreader WHERE id = ?`
 
 	stmt, err := tdb.Prepare(sql_delete)
+	defer stmt.Close()
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
 
 	if _, err = stmt.Exec(id); err != nil {
 		return err
