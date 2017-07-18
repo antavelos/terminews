@@ -4,10 +4,146 @@ import (
 	// "github.com/antavelos/terminews/db"s
 	"github.com/antavelos/terminews/ui"
 	gc "github.com/rthornton128/goncurses"
+	"log"
 )
 
+const (
+	RSS_READERS_WINDOW = iota
+	NEWS_WINDOW
+)
+
+const (
+	FOCUSED_WINDOW   = 1
+	UNFOCUSED_WINDOW = 2
+)
+
+var (
+	Stdscr                             *gc.Window
+	RssReadersWin, NewsWin             *ui.TWindow
+	RssReadersMenu, NewsMenu           *ui.TMenu
+	RssReadersMenuItems, NewsMenuItems []*ui.TMenuItem
+	Windows                            []*ui.TWindow
+	Panels                             []*gc.Panel
+	ActiveWindow                       int
+	err                                error
+	maxX                               int
+	maxY                               int
+)
+
+func CreateRssReadersWindow(rssReadersData []string) error {
+
+	// MenuItems
+	for i, d := range rssReadersData {
+		item := &ui.TMenuItem{}
+		if err = item.Create(i+1, d, d); err != nil {
+			return err
+		}
+		RssReadersMenuItems = append(RssReadersMenuItems, item)
+	}
+	// Menu
+	RssReadersMenu = &ui.TMenu{}
+	if err = RssReadersMenu.Create(RssReadersMenuItems); err != nil {
+		return err
+	}
+	// Window
+	RssReadersWin = &ui.TWindow{}
+	if err = RssReadersWin.Create("My RSS Readers", maxY, maxX/4, 0, 0); err != nil {
+		return err
+	}
+	Windows = append(Windows, RssReadersWin)
+
+	// attach RssReadersMenu on RssReadersWindow
+	RssReadersWin.AttachMenu(RssReadersMenu)
+
+	Panels = append(Panels, gc.NewPanel(RssReadersWin.Window))
+
+	RssReadersMenu.Post()
+	RssReadersWin.Refresh()
+
+	return nil
+}
+
+func CreateNewsData(newsData []string) error {
+	// MenuItems
+	for i, d := range newsData {
+		item := &ui.TMenuItem{}
+		if err = item.Create(i+1, d, d); err != nil {
+			return err
+		}
+		NewsMenuItems = append(NewsMenuItems, item)
+	}
+	// Menu
+	NewsMenu = &ui.TMenu{}
+	if err = NewsMenu.Create(NewsMenuItems); err != nil {
+		return err
+	}
+
+	NewsWin = &ui.TWindow{}
+	if err = NewsWin.Create("News from", maxY, (maxX*3)/4, 0, maxX/4); err != nil {
+		return err
+	}
+	Windows = append(Windows, NewsWin)
+
+	// attach NewsMenu on NewsWindow
+	NewsWin.AttachMenu(NewsMenu)
+
+	Panels = append(Panels, gc.NewPanel(NewsWin.Window))
+
+	NewsMenu.Post()
+	NewsWin.Refresh()
+
+	return nil
+}
+
+// the order mstters!!!
+func Free() {
+	var tmi *ui.TMenuItem
+
+	RssReadersMenu.UnPost()
+	NewsMenu.UnPost()
+
+	for _, tmi = range RssReadersMenuItems {
+		tmi.MenuItem.Free()
+	}
+	for _, tmi = range NewsMenuItems {
+		tmi.MenuItem.Free()
+	}
+
+	RssReadersMenu.Free()
+	NewsMenu.Free()
+
+	gc.End()
+}
+
+func handleUIError(err error) {
+	gc.End()
+	log.Fatal(err)
+}
+
+func InitUI() error {
+
+	Stdscr, err = gc.Init()
+	if err != nil {
+		return err
+	}
+
+	maxY, maxX = Stdscr.MaxYX()
+	// Initial configuration
+	gc.StartColor()
+	gc.Raw(true)
+	gc.Echo(false)
+	gc.Cursor(0)
+	Stdscr.Keypad(true)
+	Stdscr.Clear()
+
+	// Define color combinations
+	gc.InitPair(FOCUSED_WINDOW, gc.C_GREEN, gc.C_BLACK)
+	gc.InitPair(UNFOCUSED_WINDOW, gc.C_WHITE, gc.C_BLACK)
+
+	return nil
+}
+
 func Main() {
-	ui.Init()
 
 	newsData := []string{
 		"Life inside ISIS bride camp: Fighting, sex obsessed fighters, 'jihadi Tinder'",
@@ -68,40 +204,49 @@ func Main() {
 		"Reuters",
 	}
 
-	ui.CreateRssReadersWindow(rssReadersData)
-	ui.CreateNewsData(newsData)
+	if err := InitUI(); err != nil {
+		handleUIError(err)
+	}
 
-	defer ui.Free()
+	if err := CreateRssReadersWindow(rssReadersData); err != nil {
+		handleUIError(err)
+	}
 
-	ui.RssReadersWin.Focus()
+	if err := CreateNewsData(newsData); err != nil {
+		handleUIError(err)
+	}
+
+	defer Free()
+
+	RssReadersWin.Focus(FOCUSED_WINDOW)
 	for {
-		ui.RssReadersWin.Refresh()
-		ui.NewsWin.Refresh()
+		RssReadersWin.Refresh()
+		NewsWin.Refresh()
 
 		gc.Update()
-		switch ch := ui.RssReadersWin.GetChar(); ch {
+		switch ch := RssReadersWin.GetChar(); ch {
 		case 'q':
-			ui.RssReadersWin.Clear()
-			ui.NewsWin.Clear()
+			RssReadersWin.Clear()
+			NewsWin.Clear()
 			return
 		case gc.KEY_TAB:
-			ui.ActiveWindow += 1
-			if ui.ActiveWindow > 1 {
-				ui.ActiveWindow = 0
+			ActiveWindow += 1
+			if ActiveWindow > 1 {
+				ActiveWindow = 0
 			}
-			ui.Panels[ui.ActiveWindow].Top()
-			for i, w := range ui.Windows {
-				if i == ui.ActiveWindow {
-					w.Focus()
+			Panels[ActiveWindow].Top()
+			for i, w := range Windows {
+				if i == ActiveWindow {
+					w.Focus(FOCUSED_WINDOW)
 				} else {
-					w.Unfocus()
+					w.Unfocus(UNFOCUSED_WINDOW)
 				}
 			}
 		default:
-			if ui.ActiveWindow == ui.RSS_READERS_WINDOW {
-				ui.RssReadersMenu.Driver(gc.DriverActions[ch])
+			if ActiveWindow == RSS_READERS_WINDOW {
+				RssReadersMenu.Driver(gc.DriverActions[ch])
 			} else {
-				ui.NewsMenu.Driver(gc.DriverActions[ch])
+				NewsMenu.Driver(gc.DriverActions[ch])
 			}
 		}
 	}
