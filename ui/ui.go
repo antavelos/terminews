@@ -5,22 +5,24 @@ import (
 	gc "github.com/rthornton128/goncurses"
 )
 
-type TMenuItem struct {
-	*gc.MenuItem
-	id   int
-	name string
-	desc string
+type Displayer interface {
+	Display() string
 }
 
-func (tmi *TMenuItem) Create(id int, name string, desc string) error {
-	tmi.id = id
-	tmi.name = name
-	tmi.desc = desc
-	value := fmt.Sprintf("%3d. %v", id, name)
+type TMenuItem struct {
+	*gc.MenuItem
+	inc  int
+	data Displayer
+}
+
+func (tmi *TMenuItem) Create(inc int, data Displayer) error {
+	value := fmt.Sprintf("%3d. %v", inc, data.Display())
 	item, err := gc.NewItem(value, "")
 	if err != nil {
 		return err
 	}
+	tmi.inc = inc
+	tmi.data = data
 	tmi.MenuItem = item
 
 	return nil

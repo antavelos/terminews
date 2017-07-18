@@ -23,6 +23,10 @@ func (e Event) String() string {
 		yellow(e.Title), magenta(e.Date), faint(e.Link), e.Description)
 }
 
+func (e *Event) Display() string {
+	return e.Title
+}
+
 type Events []Event
 
 func (es Events) String() string {

@@ -35,12 +35,12 @@ var (
 	maxY                               int
 )
 
-func CreaterssReadersWindow(rssReadersData []string) error {
+func CreaterssReadersWindow(rssReaders []db.RssReader) error {
 
 	// MenuItems
-	for i, d := range rssReadersData {
+	for i, rssReader := range rssReaders {
 		item := &ui.TMenuItem{}
-		if err = item.Create(i+1, d, d); err != nil {
+		if err = item.Create(i+1, &rssReader); err != nil {
 			return err
 		}
 		rssReadersMenuItems = append(rssReadersMenuItems, item)
@@ -69,11 +69,11 @@ func CreaterssReadersWindow(rssReadersData []string) error {
 	return nil
 }
 
-func CreateNewsData(newsData []string, rrName string) error {
+func CreateNewsData(events []news.Event, rrName string) error {
 	// MenuItems
-	for i, d := range newsData {
+	for i, event := range events {
 		item := &ui.TMenuItem{}
-		if err = item.Create(i+1, d, d); err != nil {
+		if err = item.Create(i+1, &event); err != nil {
 			return err
 		}
 		newsMenuItems = append(newsMenuItems, item)
@@ -215,11 +215,7 @@ func Main() {
 	if rssReaders, err = tdb.GetRssReaders(); err != nil {
 		handleDBFatalError(err)
 	}
-	rssReadersData := make([]string, len(rssReaders))
-	for i, rr := range rssReaders {
-		rssReadersData[i] = rr.Name
-	}
-	if err = CreaterssReadersWindow(rssReadersData); err != nil {
+	if err = CreaterssReadersWindow(rssReaders); err != nil {
 		handleUIFatalError(err)
 	}
 
@@ -227,11 +223,7 @@ func Main() {
 	if events, err = rss.Retrieve(rssReaders[0].Url); err != nil {
 		handleNewsLoadError(rssReaders[0].Name)
 	}
-	newsData := make([]string, len(events))
-	for i, e := range events {
-		newsData[i] = e.Title
-	}
-	if err = CreateNewsData(newsData, rssReaders[0].Name); err != nil {
+	if err = CreateNewsData(events, rssReaders[0].Name); err != nil {
 		handleUIFatalError(err)
 	}
 
