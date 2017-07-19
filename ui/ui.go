@@ -12,7 +12,7 @@ type Displayer interface {
 type TMenuItem struct {
 	*gc.MenuItem
 	inc  int
-	data Displayer
+	Data Displayer
 }
 
 func (tmi *TMenuItem) Create(inc int, data Displayer) error {
@@ -22,7 +22,7 @@ func (tmi *TMenuItem) Create(inc int, data Displayer) error {
 		return err
 	}
 	tmi.inc = inc
-	tmi.data = data
+	tmi.Data = data
 	tmi.MenuItem = item
 
 	return nil
@@ -33,13 +33,8 @@ type TMenu struct {
 	items []*TMenuItem
 }
 
-func (tm *TMenu) Create(tmis []*TMenuItem) error {
-	tm.items = tmis
-	gcMenuItems := make([]*gc.MenuItem, len(tmis))
-	for i, tmi := range tmis {
-		gcMenuItems[i] = tmi.MenuItem
-	}
-	menu, err := gc.NewMenu(gcMenuItems)
+func (tm *TMenu) Create() error {
+	menu, err := gc.NewMenu([]*gc.MenuItem{})
 	if err != nil {
 		return err
 	}
@@ -48,10 +43,36 @@ func (tm *TMenu) Create(tmis []*TMenuItem) error {
 	return nil
 }
 
+func (tm *TMenu) RefreshItems(dataItems []Displayer) ([]*TMenuItem, error) {
+	var tmis []*TMenuItem
+	var gcItems []*gc.MenuItem
+
+	for _, gcmi := range tm.Items() {
+		gcmi.Free()
+	}
+
+	for i, data := range dataItems {
+		tmi := &TMenuItem{}
+		if err := tmi.Create(i+1, data); err != nil {
+			return nil, err
+		}
+		tmis = append(tmis, tmi)
+	}
+	for _, tmi := range tmis {
+		gcItems = append(gcItems, tmi.MenuItem)
+	}
+	if err := tm.SetItems(gcItems); err != nil {
+		return nil, err
+	}
+	tm.items = tmis
+
+	return tmis, nil
+}
+
 type TWindow struct {
 	*gc.Window
 	title      string
-	h, w, y, x int
+	H, W, Y, X int
 }
 
 func (tw *TWindow) Create(title string, h, w, y, x int) error {
@@ -60,13 +81,14 @@ func (tw *TWindow) Create(title string, h, w, y, x int) error {
 		return err
 	}
 	tw.Window = win
-	tw.h = h
-	tw.w = w
-	tw.y = y
-	tw.x = x
+	tw.H = h
+	tw.W = w
+	tw.Y = y
+	tw.X = x
 
 	tw.Keypad(true)
-	tw.SetContour()
+	tw.Box(0, 0)
+	tw.SetHLine(2)
 	tw.SetTitle(title)
 
 	return nil
@@ -74,31 +96,32 @@ func (tw *TWindow) Create(title string, h, w, y, x int) error {
 
 func (tw *TWindow) SetTitle(title string) {
 	tw.title = title
-	tw.MovePrint(1, (tw.w/2)-(len(title)/2), title)
+	tw.SetLine(title, 1, (tw.W/2)-(len(title)/2))
 }
 
-func (tw *TWindow) SetContour() {
-	tw.Box(0, 0)
-	tw.MoveAddChar(2, 0, gc.ACS_LTEE)
-	tw.HLine(2, 1, gc.ACS_HLINE, tw.w-2)
-	tw.MoveAddChar(2, tw.w-1, gc.ACS_RTEE)
+func (tw *TWindow) SetHLine(y int) {
+	tw.HLine(y, 1, gc.ACS_HLINE, tw.W-2)
+}
+
+func (tw *TWindow) SetLine(s string, y, x int) {
+	tw.MovePrint(y, x, s)
 }
 
 func (tw *TWindow) Focus(cc int16) {
 	tw.ColorOn(cc)
-	tw.SetContour()
+	tw.Box(0, 0)
 	tw.ColorOff(cc)
 }
 
 func (tw *TWindow) Unfocus(cc int16) {
 	tw.ColorOn(cc)
-	tw.SetContour()
+	tw.Box(0, 0)
 	tw.ColorOff(cc)
 }
 
 func (tw *TWindow) AttachMenu(tm *TMenu) {
 	tm.Menu.SetWindow(tw.Window)
-	tm.Menu.SubWindow(tw.Derived(tw.h-6, tw.w-4, 4, 2))
-	tm.Menu.Format(tw.h-6, 1)
+	tm.Menu.SubWindow(tw.Derived(tw.H-4, tw.W-4, 4, 2))
+	tm.Menu.Format(tw.H-4, 1)
 	tm.Menu.Mark("")
 }

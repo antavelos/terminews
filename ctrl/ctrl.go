@@ -30,24 +30,17 @@ var (
 	windows                            []*ui.TWindow
 	panels                             []*gc.Panel
 	activeWindow                       int
+	activeRssReadersMenuItem           int
+	activeNewsMenuItem                 int
 	err                                error
 	maxX                               int
 	maxY                               int
 )
 
-func CreaterssReadersWindow(rssReaders []db.RssReader) error {
-
-	// MenuItems
-	for i, rssReader := range rssReaders {
-		item := &ui.TMenuItem{}
-		if err = item.Create(i+1, &rssReader); err != nil {
-			return err
-		}
-		rssReadersMenuItems = append(rssReadersMenuItems, item)
-	}
+func CreateRssReadersMenu() error {
 	// Menu
 	rssReadersMenu = &ui.TMenu{}
-	if err = rssReadersMenu.Create(rssReadersMenuItems); err != nil {
+	if err = rssReadersMenu.Create(); err != nil {
 		return err
 	}
 	// Window
@@ -69,26 +62,18 @@ func CreaterssReadersWindow(rssReaders []db.RssReader) error {
 	return nil
 }
 
-func CreateNewsData(events []news.Event, rrName string) error {
-	// MenuItems
-	for i, event := range events {
-		item := &ui.TMenuItem{}
-		if err = item.Create(i+1, &event); err != nil {
-			return err
-		}
-		newsMenuItems = append(newsMenuItems, item)
-	}
+func CreateNewsMenu() error {
 	// Menu
 	newsMenu = &ui.TMenu{}
-	if err = newsMenu.Create(newsMenuItems); err != nil {
+	if err = newsMenu.Create(); err != nil {
 		return err
 	}
 
 	newsWin = &ui.TWindow{}
-	title := fmt.Sprintf("News from %v", rrName)
-	if err = newsWin.Create(title, maxY, (maxX*3)/4, 0, maxX/4); err != nil {
+	if err = newsWin.Create("", maxY, (maxX*3)/4, 0, maxX/4); err != nil {
 		return err
 	}
+	newsWin.SetHLine(maxY / 2)
 	windows = append(windows, newsWin)
 
 	// attach newsMenu on newsWindow
@@ -100,6 +85,66 @@ func CreateNewsData(events []news.Event, rrName string) error {
 	newsWin.Refresh()
 
 	return nil
+}
+
+func UpdateRssReadersMenuItems(rssReaders []db.RssReader) error {
+	var displayers []ui.Displayer = make([]ui.Displayer, len(rssReaders))
+	for i, rr := range rssReaders {
+		displayers[i] = rr
+	}
+	rssReadersMenu.UnPost()
+	tmis, err := rssReadersMenu.RefreshItems(displayers)
+	if err != nil {
+		return err
+	}
+	rssReadersMenu.Post()
+	rssReadersMenuItems = tmis
+
+	return nil
+}
+
+func UpdateNewsMenuItems(events []news.Event) error {
+	var displayers []ui.Displayer = make([]ui.Displayer, len(events))
+	for i, e := range events {
+		displayers[i] = e
+	}
+	newsMenu.UnPost()
+	tmis, err := newsMenu.RefreshItems(displayers)
+	if err != nil {
+		return err
+	}
+	newsMenuItems = tmis
+	newsMenu.Post()
+
+	return nil
+}
+
+func LoadNews(rssReader db.RssReader) {
+	events, err := rss.Retrieve(rssReader.Url)
+	if err != nil {
+		handleUIFatalError(err)
+
+		// handleNewsLoadError(err.Error())
+	}
+	if err = UpdateNewsMenuItems(events); err != nil {
+		handleUIFatalError(err)
+	}
+	LoadNewsContent(events[0])
+	newsWin.SetTitle(fmt.Sprintf("News from %v", rssReader.Name))
+}
+
+func LoadNewsContent(event news.Event) {
+	authorLine := fmt.Sprintf("By %v", string(event.Author))
+	publishedLine := fmt.Sprintf("Published on: %v", event.Published)
+	linkLine := fmt.Sprintf("Link: %v", event.Link)
+	summaryLine := fmt.Sprintf("%v", string(event.Description))
+	halfway := (newsWin.H / 2)
+
+	newsWin.SetHLine(halfway)
+	newsWin.SetLine(authorLine, (halfway + 1), 2)
+	newsWin.SetLine(publishedLine, (halfway + 2), 2)
+	newsWin.SetLine(linkLine, (halfway + 3), 2)
+	newsWin.SetLine(summaryLine, (halfway + 5), 2)
 }
 
 // the order mstters!!!
@@ -133,8 +178,7 @@ func handleDBFatalError(err error) {
 }
 
 func handleNewsLoadError(rrName string) {
-	msg := fmt.Sprintf("Failed to load news from %v", rrName)
-	newsWin.SetTitle(msg)
+	newsWin.SetTitle(err.Error())
 	newsWin.Focus(ERROR_WINDOW)
 	activeWindow = NEWS_WINDOW
 }
@@ -163,6 +207,14 @@ func InitUI() error {
 	return nil
 }
 
+func onRssReadersWin() bool {
+	return activeWindow == RSS_READERS_WINDOW
+}
+
+func onNewsWin() bool {
+	return activeWindow == NEWS_WINDOW
+}
+
 func Loop() {
 	for {
 		rssReadersWin.Refresh()
@@ -188,10 +240,54 @@ func Loop() {
 				}
 			}
 		default:
-			if activeWindow == RSS_READERS_WINDOW {
-				rssReadersMenu.Driver(gc.DriverActions[ch])
+			key := gc.Key(ch)
+			if onRssReadersWin() {
+				rssReadersMenu.Driver(gc.DriverActions[key])
 			} else {
-				newsMenu.Driver(gc.DriverActions[ch])
+				newsMenu.Driver(gc.DriverActions[key])
+			}
+			if key == gc.KEY_UP {
+				var active *int
+				if onRssReadersWin() {
+					active = &activeRssReadersMenuItem
+				} else {
+					active = &activeNewsMenuItem
+				}
+				if *active > 0 {
+					*active -= 1
+				}
+				if onNewsWin() {
+					item := newsMenuItems[activeNewsMenuItem]
+					event := item.Data.(news.Event)
+					LoadNewsContent(event)
+				}
+			}
+			if key == gc.KEY_DOWN {
+				var active *int
+				var menuItems []*ui.TMenuItem
+				if onRssReadersWin() {
+					active = &activeRssReadersMenuItem
+					menuItems = rssReadersMenuItems
+				} else {
+					active = &activeNewsMenuItem
+					menuItems = newsMenuItems
+
+				}
+				if *active < len(menuItems)-1 {
+					*active += 1
+				}
+				if onNewsWin() {
+					item := newsMenuItems[activeNewsMenuItem]
+					event := item.Data.(news.Event)
+					LoadNewsContent(event)
+				}
+			}
+			if key == gc.KEY_RETURN || key == gc.KEY_ENTER {
+				if onRssReadersWin() {
+					item := rssReadersMenuItems[activeRssReadersMenuItem]
+					rssReader := item.Data.(db.RssReader)
+					LoadNews(rssReader)
+				}
 			}
 		}
 	}
@@ -199,7 +295,6 @@ func Loop() {
 
 func Main() {
 	var rssReaders []db.RssReader
-	var events []news.Event
 
 	// Init DB
 	if tdb, err = db.InitDB("./terminews.db"); err != nil {
@@ -211,21 +306,24 @@ func Main() {
 		handleUIFatalError(err)
 	}
 
+	if err = CreateRssReadersMenu(); err != nil {
+		handleUIFatalError(err)
+	}
+
+	if err = CreateNewsMenu(); err != nil {
+		handleUIFatalError(err)
+	}
+
 	// Load RSS Readers data
 	if rssReaders, err = tdb.GetRssReaders(); err != nil {
 		handleDBFatalError(err)
 	}
-	if err = CreaterssReadersWindow(rssReaders); err != nil {
+	if err = UpdateRssReadersMenuItems(rssReaders); err != nil {
 		handleUIFatalError(err)
 	}
 
 	// Load News
-	if events, err = rss.Retrieve(rssReaders[0].Url); err != nil {
-		handleNewsLoadError(rssReaders[0].Name)
-	}
-	if err = CreateNewsData(events, rssReaders[0].Name); err != nil {
-		handleUIFatalError(err)
-	}
+	LoadNews(rssReaders[0])
 
 	defer Free()
 
