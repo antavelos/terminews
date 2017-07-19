@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/antavelos/terminews/news"
 	"github.com/mmcdole/gofeed"
+	"regexp"
 )
 
 func Retrieve(url string) ([]news.Event, error) {
@@ -19,14 +20,22 @@ func Retrieve(url string) ([]news.Event, error) {
 		e := news.Event{}
 		e.Title = []rune(item.Title)
 		if item.Author != nil {
-			e.Title = []rune(item.Author.Name)
+			e.Author = []rune(item.Author.Name)
+		} else {
+			e.Author = []rune("Unknown")
 		}
 		e.Link = item.Link
-		e.Description = []rune(item.Description)
+		e.Description = []rune(trimDescription(item.Description))
 		e.Published = item.Published
 
 		events = append(events, e)
 	}
 
 	return events, nil
+}
+
+func trimDescription(desc string) string {
+	var re = regexp.MustCompile(`(<.*?>)`)
+
+	return re.ReplaceAllString(desc, ``)
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/antavelos/terminews/ui"
 	gc "github.com/rthornton128/goncurses"
 	"log"
+	"strings"
 )
 
 const (
@@ -57,7 +58,6 @@ func CreateRssReadersMenu() error {
 
 	rssReadersMenu.Post()
 	rssReadersWin.Refresh()
-	rssReadersWin.Focus(FOCUSED_WINDOW)
 
 	return nil
 }
@@ -80,6 +80,8 @@ func CreateNewsMenu() error {
 	newsWin.AttachMenu(newsMenu)
 
 	panels = append(panels, gc.NewPanel(newsWin.Window))
+	activeWindow = NEWS_WINDOW
+	// panels[NEWS_WINDOW].Top()
 
 	newsMenu.Post()
 	newsWin.Refresh()
@@ -132,19 +134,59 @@ func LoadNews(rssReader db.RssReader) {
 	LoadNewsContent(events[0])
 	newsWin.SetTitle(fmt.Sprintf("News from %v", rssReader.Name))
 }
+func clearNewsContent() {
+	for h := (newsWin.H / 2) + 1; h <= newsWin.H; h++ {
+		newsWin.Move(h, 1)
+		newsWin.ClearToEOL()
+	}
+}
 
 func LoadNewsContent(event news.Event) {
+	clearNewsContent()
+	newsWin.Focus(FOCUSED_WINDOW)
+	rssReadersWin.Unfocus(UNFOCUSED_WINDOW)
+	activeWindow = NEWS_WINDOW
 	authorLine := fmt.Sprintf("By %v", string(event.Author))
 	publishedLine := fmt.Sprintf("Published on: %v", event.Published)
-	linkLine := fmt.Sprintf("Link: %v", event.Link)
-	summaryLine := fmt.Sprintf("%v", string(event.Description))
+	summaryLine := processDescription(string(event.Description))
 	halfway := (newsWin.H / 2)
 
 	newsWin.SetHLine(halfway)
 	newsWin.SetLine(authorLine, (halfway + 1), 2)
 	newsWin.SetLine(publishedLine, (halfway + 2), 2)
-	newsWin.SetLine(linkLine, (halfway + 3), 2)
-	newsWin.SetLine(summaryLine, (halfway + 5), 2)
+	for i, s := range summaryLine {
+		newsWin.SetLine(s, (halfway + 4 + i), 2)
+	}
+}
+
+func processDescription(desc string) []string {
+	str := strings.Split(desc, " ")
+	trim := make([]string, len(str))
+	for i, s := range str {
+		trim[i] = strings.TrimSpace(s)
+	}
+
+	var ret []string
+	w := newsWin.W - 4
+	gc.End()
+	// i := 0
+	c := w
+	a := 0
+	b := 1
+	for _, s := range trim {
+		l := len(s) + 1
+		if c-l < 0 {
+			ret = append(ret, strings.Join(trim[a:b-1], " "))
+			c = w
+			a = b - 1
+			continue
+		}
+		c -= l
+		b += 1
+	}
+	ret = append(ret, strings.Join(trim[a:b-1], " "))
+
+	return ret
 }
 
 // the order mstters!!!
@@ -221,7 +263,7 @@ func Loop() {
 		newsWin.Refresh()
 
 		gc.Update()
-		switch ch := rssReadersWin.GetChar(); ch {
+		switch ch := newsWin.GetChar(); ch {
 		case 'q':
 			rssReadersWin.Clear()
 			newsWin.Clear()
