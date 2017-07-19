@@ -6,10 +6,10 @@ import (
 )
 
 type Event struct {
-	Title       []rune
-	Author      []rune
+	Title       string
+	Author      string
 	Link        string
-	Description []rune
+	Description string
 	Published   string
 }
 

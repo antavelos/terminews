@@ -124,9 +124,7 @@ func UpdateNewsMenuItems(events []news.Event) error {
 func LoadNews(rssReader db.RssReader) {
 	events, err := rss.Retrieve(rssReader.Url)
 	if err != nil {
-		handleUIFatalError(err)
-
-		// handleNewsLoadError(err.Error())
+		handleNewsLoadError(err.Error())
 	}
 	if err = UpdateNewsMenuItems(events); err != nil {
 		handleUIFatalError(err)
@@ -203,8 +201,12 @@ func Free() {
 		tmi.MenuItem.Free()
 	}
 
-	rssReadersMenu.Free()
-	newsMenu.Free()
+	if err := rssReadersMenu.Free(); err != nil {
+		handleUIFatalError(err)
+	}
+	if err := newsMenu.Free(); err != nil {
+		handleUIFatalError(err)
+	}
 
 	gc.End()
 }
@@ -226,7 +228,6 @@ func handleNewsLoadError(rrName string) {
 }
 
 func InitUI() error {
-
 	stdscr, err = gc.Init()
 	if err != nil {
 		return err

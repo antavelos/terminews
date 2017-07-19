@@ -18,15 +18,15 @@ func Retrieve(url string) ([]news.Event, error) {
 	var events []news.Event
 	for _, item := range feed.Items {
 		e := news.Event{}
-		e.Title = []rune(item.Title)
+		e.Title = removeSpecialCharacters(item.Title)
 		if item.Author != nil {
-			e.Author = []rune(item.Author.Name)
+			e.Author = removeSpecialCharacters(item.Author.Name)
 		} else {
-			e.Author = []rune("Unknown")
+			e.Author = "Unknown"
 		}
 		e.Link = item.Link
-		e.Description = []rune(trimDescription(item.Description))
-		e.Published = item.Published
+		e.Description = trimDescription(removeSpecialCharacters(item.Description))
+		e.Published = removeSpecialCharacters(item.Published)
 
 		events = append(events, e)
 	}
@@ -38,4 +38,10 @@ func trimDescription(desc string) string {
 	var re = regexp.MustCompile(`(<.*?>)`)
 
 	return re.ReplaceAllString(desc, ``)
+}
+
+func removeSpecialCharacters(s string) string {
+	var re = regexp.MustCompile(`([’‘])`)
+
+	return re.ReplaceAllString(s, `'`)
 }

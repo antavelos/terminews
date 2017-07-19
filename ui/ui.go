@@ -16,7 +16,7 @@ type TMenuItem struct {
 }
 
 func (tmi *TMenuItem) Create(inc int, data Displayer) error {
-	value := fmt.Sprintf("%3d. %v", inc, data.Display())
+	value := fmt.Sprintf(`%3d. %+q`, inc, data.Display())
 	item, err := gc.NewItem(value, "")
 	if err != nil {
 		return err
