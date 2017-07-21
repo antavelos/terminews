@@ -82,9 +82,9 @@ func CreateViews() {
 
 func UpdateSummary(event news.Event) {
 	summary.Clear()
-	fmt.Fprintf(summary, "By %v\n", event.Author)
-	fmt.Fprintf(summary, "Published on %v\n\n", event.Published)
-	fmt.Fprintf(summary, "%v", event.Description)
+	fmt.Fprintf(summary, "\n\n By %v\n", event.Author)
+	fmt.Fprintf(summary, " Published on %v\n\n", event.Published)
+	fmt.Fprintf(summary, " %v", event.Description)
 }
 
 func UpdateNews(rr db.RssReader) {
@@ -103,11 +103,7 @@ func UpdateNews(rr db.RssReader) {
 	}
 	newsList.Title = fmt.Sprintf(" News from %v ", rr.Name)
 	newsList.Focus(g)
-
-	summary.Clear()
-	fmt.Fprintf(summary, "By %v\n", events[0].Author)
-	fmt.Fprintf(summary, "Published on %v\n\n", events[0].Published)
-	fmt.Fprintf(summary, "%v", events[0].Description)
+	UpdateSummary(events[0])
 }
 
 func LoadRssReaders() []db.RssReader {
@@ -163,12 +159,7 @@ func Main() {
 
 	UpdateNews(rssReaders[0])
 
-	err = g.SetKeybinding("", c.KeyCtrlC, c.ModNone, quit)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyCtrlC, c.ModNone, quit)
+	err = g.SetKeybinding("", rune('q'), c.ModNone, quit)
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
 	}
@@ -178,6 +169,20 @@ func Main() {
 		handleFatalError("Could not set key binding:", err)
 	}
 
+	err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, listUp)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, listDown)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyEnter, c.ModNone, loadNews)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
 	// Start the main loop.
 	g.MainLoop()
 }
@@ -213,10 +218,49 @@ func quit(g *c.Gui, v *c.View) error {
 }
 
 func switchView(g *c.Gui, v *c.View) error {
-	if g.CurrentView() == rrList.View {
+	if v == rrList.View {
 		newsList.Focus(g)
+		rrList.Unfocus()
 	} else {
 		rrList.Focus(g)
+		newsList.Unfocus()
 	}
+	return nil
+}
+
+func listUp(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MoveUp()
+	} else {
+		newsList.MoveUp()
+		currItem := newsList.CurrentItem()
+		event := currItem.(news.Event)
+		UpdateSummary(event)
+	}
+
+	return nil
+}
+
+func listDown(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MoveDown()
+	} else {
+		newsList.MoveDown()
+		currItem := newsList.CurrentItem()
+		event := currItem.(news.Event)
+		UpdateSummary(event)
+	}
+
+	return nil
+}
+
+func loadNews(g *c.Gui, v *c.View) error {
+
+	if v == rrList.View {
+		currItem := rrList.CurrentItem()
+		rssReader := currItem.(db.RssReader)
+		UpdateNews(rssReader)
+	}
+
 	return nil
 }

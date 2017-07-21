@@ -12,7 +12,7 @@ type Displayer interface {
 type List struct {
 	*c.View
 	name string
-	Data Displayer
+	Data []Displayer
 }
 
 func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
@@ -26,7 +26,6 @@ func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
 	list.name = name
 	list.SelBgColor = c.ColorWhite
 	list.SelFgColor = c.ColorBlack
-	// list.BgColor = c.ColorDefault
 	list.Autoscroll = true
 
 	return list, nil
@@ -36,7 +35,12 @@ func (l *List) Focus(g *c.Gui) error {
 	if _, err := g.SetCurrentView(l.name); err != nil {
 		return err
 	}
+	l.Highlight = true
 	return nil
+}
+
+func (l *List) Unfocus() {
+	l.Highlight = false
 }
 
 func (l *List) SetItems(items []Displayer) error {
@@ -46,6 +50,34 @@ func (l *List) SetItems(items []Displayer) error {
 			return err
 		}
 	}
+	l.Data = items
+	l.SetCursor(0, 0)
 
 	return nil
+}
+
+func (l *List) MoveDown() error {
+	x, y := l.Cursor()
+	if y == len(l.Data)-1 {
+		l.SetCursor(x, 0)
+	} else {
+		l.SetCursor(x, y+1)
+	}
+	return nil
+}
+
+func (l *List) MoveUp() error {
+	x, y := l.Cursor()
+	if y == 0 {
+		l.SetCursor(x, len(l.Data)-1)
+	} else {
+		l.SetCursor(x, y-1)
+	}
+	return nil
+}
+
+func (l *List) CurrentItem() Displayer {
+	_, y := l.Cursor()
+
+	return l.Data[y]
 }
