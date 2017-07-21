@@ -26,7 +26,7 @@ func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
 	list.name = name
 	list.SelBgColor = c.ColorWhite
 	list.SelFgColor = c.ColorBlack
-	list.BgColor = c.ColorBlack
+	// list.BgColor = c.ColorDefault
 	list.Autoscroll = true
 
 	return list, nil

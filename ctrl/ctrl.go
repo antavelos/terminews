@@ -136,6 +136,7 @@ func InitUI() {
 
 	// g.Cursor = true
 	g.SelFgColor = c.ColorGreen
+	g.BgColor = c.ColorDefault
 	g.Highlight = true
 
 	g.SetManagerFunc(layout)
