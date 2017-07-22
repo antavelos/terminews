@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"math"
 
 	c "github.com/jroimartin/gocui"
 )
@@ -48,14 +47,13 @@ func (l *List) length() int {
 }
 
 func (l *List) pages() int {
-	return math.Ceil(float64(l.length()) / float64(l.height()))
-	// d := l.length() / l.height()
+	d := l.length() / l.height()
 
-	// if l.length()%l.height() > 0 {
-	// 	d++
-	// }
+	if l.length()%l.height() > 0 {
+		d++
+	}
 
-	// return d
+	return d
 }
 
 func (l *List) nextPage() (int, int) {
