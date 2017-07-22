@@ -120,15 +120,8 @@ func (l *List) SetTitle(title string) {
 
 func (l *List) SetItems(data []Displayer) error {
 	l.Items = data
-
-	var start, end int
-	if l.length() > l.height() {
-		start, end = 0, l.height()
-	} else {
-		start, end = 0, l.length()
-	}
-	l.display(start, end)
 	l.currPage = 1
+	l.display(l.firstPage())
 
 	return nil
 }
@@ -152,12 +145,14 @@ func (l *List) display(start, end int) error {
 func (l *List) MoveDown() error {
 	x, y := l.Cursor()
 
-	if y == l.height()-1 {
+	if y == l.height()-1 || (l.currPage == l.pages() && y == (l.length()%l.height())-1) {
 		y = 0
-		if l.hasNextPage() {
-			l.display(l.nextPage())
-		} else {
-			l.display(l.firstPage())
+		if l.pages() > 1 {
+			if l.hasNextPage() {
+				l.display(l.nextPage())
+			} else {
+				l.display(l.firstPage())
+			}
 		}
 	} else {
 		y++
@@ -172,11 +167,16 @@ func (l *List) MoveDown() error {
 func (l *List) MoveUp() error {
 	x, y := l.Cursor()
 	if y == 0 {
-		y = l.height() - 1
-		if l.hasPrevPage() {
-			l.display(l.prevPage())
+		if l.pages() > 1 {
+			if l.hasPrevPage() {
+				y = l.height() - 1
+				l.display(l.prevPage())
+			} else {
+				y = (l.length() % l.height()) - 1
+				l.display(l.lastPage())
+			}
 		} else {
-			l.display(l.lastPage())
+			y = l.length() - 1
 		}
 	} else {
 		y--
@@ -186,6 +186,32 @@ func (l *List) MoveUp() error {
 		return err
 	}
 
+	return nil
+}
+
+func (l *List) MovePgDown() error {
+
+	if l.hasNextPage() {
+		l.display(l.nextPage())
+	} else {
+		l.display(l.firstPage())
+	}
+	if err := l.SetCursor(0, 0); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *List) MovePgUp() error {
+
+	if l.hasPrevPage() {
+		l.display(l.prevPage())
+	} else {
+		l.display(l.lastPage())
+	}
+	if err := l.SetCursor(0, 0); err != nil {
+		return err
+	}
 	return nil
 }
 

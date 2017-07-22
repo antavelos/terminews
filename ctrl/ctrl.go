@@ -56,7 +56,7 @@ func CreateViews() {
 	tw, th := g.Size()
 
 	lw := (tw * 3) / 10
-	oh := (th * 75) / 100
+	oh := (th * 70) / 100
 
 	// RSS Readers List
 	rrList, err = ui.CreateList(g, RSS_READERS_VIEW, 0, 0, lw, th-1)
@@ -184,6 +184,16 @@ func Main() {
 		handleFatalError("Could not set key binding:", err)
 	}
 
+	err = g.SetKeybinding("", c.KeyPgup, c.ModNone, listPgUp)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, listPgDown)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
 	err = g.SetKeybinding("", c.KeyEnter, c.ModNone, loadNews)
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
@@ -199,7 +209,7 @@ func layout(g *c.Gui) error {
 	tw, th := g.Size()
 
 	lw := (tw * 3) / 10
-	oh := (th * 75) / 100
+	oh := (th * 70) / 100
 
 	_, err := g.SetView(RSS_READERS_VIEW, 0, 0, lw, th-1)
 	if err != nil {
@@ -233,14 +243,17 @@ func switchView(g *c.Gui, v *c.View) error {
 	return nil
 }
 
+func updateCurrentSummary() {
+	currItem := newsList.CurrentItem()
+	event := currItem.(news.Event)
+	UpdateSummary(event)
+}
 func listUp(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MoveUp()
 	} else {
 		newsList.MoveUp()
-		currItem := newsList.CurrentItem()
-		event := currItem.(news.Event)
-		UpdateSummary(event)
+		updateCurrentSummary()
 	}
 
 	return nil
@@ -251,9 +264,29 @@ func listDown(g *c.Gui, v *c.View) error {
 		rrList.MoveDown()
 	} else {
 		newsList.MoveDown()
-		currItem := newsList.CurrentItem()
-		event := currItem.(news.Event)
-		UpdateSummary(event)
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func listPgDown(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MovePgDown()
+	} else {
+		newsList.MovePgDown()
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func listPgUp(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MovePgUp()
+	} else {
+		newsList.MovePgUp()
+		updateCurrentSummary()
 	}
 
 	return nil
