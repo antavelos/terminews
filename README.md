@@ -2,18 +2,34 @@
 
 **terminews** is a terminal application using the [GOCUI](https://github.com/jroimartin/gocui) library that allows you to manage RSS resources and display their news feed
 
+
 ## Installation
+
+### Dependencies
+
+* [Go](https://golang.org/)
+	Since proper executables are not available yet you need to have go installed in order to compile and run it
+* [Sqlite3](https://www.sqlite.org/)
+	For storing RSS readers' data and bookmarking news.
+
+Get the source code with:
+
     go get github.com/antavelos/terminews
+
+and run it with:
+
+	go run $GOPATH/src/github.com/antavelos/terminews/terminews.go
+
 
 ## Usage
 
 ### Layout
-The terminal is split in 3 different areas: 
+The terminal is split in 3 different areas:
 1. **RSS Readers list** which contains the list of the user's saved RSS readers.
 2. **News list** which contains the news feed (list of news' titles) of the currently selected RSS reader.
 3. **Summary** which contains extra information of the currently selected event.
 
-For both lists the items are displayed paged. 
+For both lists the items are displayed paged.
 
 ### Key bindings
 | Key | Description |
