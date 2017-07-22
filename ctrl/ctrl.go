@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os/exec"
 
 	"github.com/antavelos/terminews/db"
 	"github.com/antavelos/terminews/news"
@@ -55,21 +56,19 @@ func CreateViews() {
 	tw, th := g.Size()
 
 	lw := (tw * 3) / 10
-	oh := (th * 6) / 10
+	oh := (th * 75) / 100
 
 	// RSS Readers List
 	rrList, err = ui.CreateList(g, RSS_READERS_VIEW, 0, 0, lw, th-1)
 	if err != nil {
 		handleFatalError("Failed to create rssreaders list:", err)
 	}
-	rrList.Title = " RSS Readers "
 
 	//
 	newsList, err = ui.CreateList(g, NEWS_VIEW, lw+1, 0, tw-1, oh)
 	if err != nil {
 		handleFatalError(" Failed to create news list:", err)
 	}
-	newsList.Title = "News from ..."
 
 	// Summary view
 	summary, err = g.SetView(SUMMARY_VIEW, lw+1, oh+1, tw-1, th-1)
@@ -101,8 +100,9 @@ func UpdateNews(rr db.RssReader) {
 	if err = newsList.SetItems(data); err != nil {
 		handleFatalError("Failed to update news list", err)
 	}
-	newsList.Title = fmt.Sprintf(" News from %v ", rr.Name)
+	newsList.SetTitle(fmt.Sprintf("News from %v", rr.Name))
 	newsList.Focus(g)
+	newsList.ResetCursor()
 	UpdateSummary(events[0])
 }
 
@@ -120,6 +120,7 @@ func LoadRssReaders() []db.RssReader {
 		handleFatalError("Failed to update rss readers list", err)
 	}
 
+	rrList.SetTitle("RSS Readers")
 	return rssReaders
 }
 
@@ -157,13 +158,17 @@ func Main() {
 
 	rssReaders := LoadRssReaders()
 
-	UpdateNews(rssReaders[0])
+	UpdateNews(rssReaders[7])
 
 	err = g.SetKeybinding("", rune('q'), c.ModNone, quit)
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
 	}
 
+	err = g.SetKeybinding("", rune('o'), c.ModNone, openBrowser)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
 	err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView)
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
@@ -194,7 +199,7 @@ func layout(g *c.Gui) error {
 	tw, th := g.Size()
 
 	lw := (tw * 3) / 10
-	oh := (th * 6) / 10
+	oh := (th * 75) / 100
 
 	_, err := g.SetView(RSS_READERS_VIEW, 0, 0, lw, th-1)
 	if err != nil {
@@ -262,5 +267,16 @@ func loadNews(g *c.Gui, v *c.View) error {
 		UpdateNews(rssReader)
 	}
 
+	return nil
+}
+
+func openBrowser(g *c.Gui, v *c.View) error {
+
+	if v == newsList.View {
+		currItem := newsList.CurrentItem()
+		event := currItem.(news.Event)
+		cmnd := exec.Command("chromium", event.Link)
+		cmnd.Start()
+	}
 	return nil
 }
