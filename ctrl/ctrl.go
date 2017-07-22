@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/antavelos/terminews/db"
 	"github.com/antavelos/terminews/rss"
@@ -166,56 +167,18 @@ func Main() {
 		UpdateNews(events, rssReaders[0].Name)
 	}
 
-	err = g.SetKeybinding("", rune('q'), c.ModNone, quit)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", rune('o'), c.ModNone, openBrowser)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", rune('b'), c.ModNone, bookmark)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyCtrlB, c.ModNone, showBookmarks)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, listUp)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, listDown)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyPgup, c.ModNone, listPgUp)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, listPgDown)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-
-	err = g.SetKeybinding("", c.KeyEnter, c.ModNone, loadNews)
-	if err != nil {
-		handleFatalError("Could not set key binding:", err)
-	}
-	// Start the main loop.
+	addKeybinding(g, "", rune('a'), c.ModNone, addRssReader)
+	addKeybinding(g, "", rune('d'), c.ModNone, deleteRecord)
+	addKeybinding(g, "", rune('b'), c.ModNone, bookmark)
+	addKeybinding(g, "", rune('o'), c.ModNone, openBrowser)
+	addKeybinding(g, "", rune('q'), c.ModNone, quit)
+	addKeybinding(g, "", c.KeyCtrlB, c.ModNone, showBookmarks)
+	addKeybinding(g, "", c.KeyTab, c.ModNone, switchView)
+	addKeybinding(g, "", c.KeyArrowUp, c.ModNone, listUp)
+	addKeybinding(g, "", c.KeyArrowDown, c.ModNone, listDown)
+	addKeybinding(g, "", c.KeyPgup, c.ModNone, listPgUp)
+	addKeybinding(g, "", c.KeyPgdn, c.ModNone, listPgDown)
+	addKeybinding(g, "", c.KeyEnter, c.ModNone, loadNews)
 	g.MainLoop()
 }
 
@@ -241,6 +204,13 @@ func layout(g *c.Gui) error {
 		handleFatalError("Cannot update input view.", err)
 	}
 	return nil
+}
+
+func addKeybinding(g *c.Gui, viewname string, key interface{}, mod c.Modifier, handler func(*c.Gui, *c.View) error) {
+	err := g.SetKeybinding(viewname, key, mod, handler)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
 }
 
 // `quit` is a handler that gets bound to Ctrl-C.
@@ -343,7 +313,6 @@ func bookmark(g *c.Gui, v *c.View) error {
 		if err := tdb.AddEvent(event); err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -356,6 +325,31 @@ func showBookmarks(g *c.Gui, v *c.View) error {
 		newsList.Clear()
 	} else {
 		UpdateNews(events, source)
+	}
+	return nil
+}
+
+func addRssReader(g *c.Gui, v *c.View) error {
+	return nil
+}
+
+func deleteRecord(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		currItem := rrList.CurrentItem()
+		rr := currItem.(db.RssReader)
+		if err := tdb.DeleteRssReader(rr.Id); err != nil {
+			return err
+		}
+		LoadRssReaders()
+	} else {
+		if strings.Contains(newsList.Title, "My bookmarks") {
+			currItem := newsList.CurrentItem()
+			event := currItem.(db.Event)
+			if err := tdb.DeleteEvent(event.Id); err != nil {
+				return err
+			}
+			showBookmarks(g, v)
+		}
 	}
 	return nil
 }
