@@ -7,7 +7,6 @@ import (
 	"os/exec"
 
 	"github.com/antavelos/terminews/db"
-	"github.com/antavelos/terminews/news"
 	"github.com/antavelos/terminews/rss"
 	"github.com/antavelos/terminews/ui"
 	c "github.com/jroimartin/gocui"
@@ -79,19 +78,14 @@ func CreateViews() {
 	summary.Wrap = true
 }
 
-func UpdateSummary(event news.Event) {
+func UpdateSummary(event db.Event) {
 	summary.Clear()
 	fmt.Fprintf(summary, "\n\n By %v\n", event.Author)
 	fmt.Fprintf(summary, " Published on %v\n\n", event.Published)
-	fmt.Fprintf(summary, " %v", event.Description)
+	fmt.Fprintf(summary, " %v", event.Summary)
 }
 
-func UpdateNews(rr db.RssReader) {
-	events, err := rss.Retrieve(rr.Url)
-	if err != nil {
-		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rr.Name)
-		newsList.Clear()
-	}
+func UpdateNews(events []db.Event, from string) {
 	var data []ui.Displayer = make([]ui.Displayer, len(events))
 	for i, e := range events {
 		data[i] = e
@@ -100,7 +94,7 @@ func UpdateNews(rr db.RssReader) {
 	if err = newsList.SetItems(data); err != nil {
 		handleFatalError("Failed to update news list", err)
 	}
-	newsList.SetTitle(fmt.Sprintf("News from %v", rr.Name))
+	newsList.SetTitle(fmt.Sprintf("News from %v", from))
 	newsList.Focus(g)
 	newsList.ResetCursor()
 	UpdateSummary(events[0])
@@ -124,6 +118,13 @@ func LoadRssReaders() []db.RssReader {
 	return rssReaders
 }
 
+func retrieveNews(rr db.RssReader) ([]db.Event, error) {
+	events, err := rss.Retrieve(rr.Url)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
 func InitUI() {
 	// Create a new GUI.
 	g, err = c.NewGui(c.OutputNormal)
@@ -146,7 +147,7 @@ func Free() {
 // Set up the widgets and run the event loop.
 func Main() {
 	// Init DB
-	if tdb, err = db.InitDB("./terminews.db"); err != nil {
+	if tdb, err = db.InitDB("./term.db"); err != nil {
 		tdb.Close()
 		log.Fatal(err)
 	}
@@ -157,8 +158,13 @@ func Main() {
 	CreateViews()
 
 	rssReaders := LoadRssReaders()
-
-	UpdateNews(rssReaders[7])
+	events, err := retrieveNews(rssReaders[0])
+	if err != nil {
+		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReaders[0].Name)
+		newsList.Clear()
+	} else {
+		UpdateNews(events, rssReaders[0].Name)
+	}
 
 	err = g.SetKeybinding("", rune('q'), c.ModNone, quit)
 	if err != nil {
@@ -169,6 +175,17 @@ func Main() {
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
 	}
+
+	err = g.SetKeybinding("", rune('b'), c.ModNone, bookmark)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyCtrlB, c.ModNone, showBookmarks)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
 	err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView)
 	if err != nil {
 		handleFatalError("Could not set key binding:", err)
@@ -245,7 +262,7 @@ func switchView(g *c.Gui, v *c.View) error {
 
 func updateCurrentSummary() {
 	currItem := newsList.CurrentItem()
-	event := currItem.(news.Event)
+	event := currItem.(db.Event)
 	UpdateSummary(event)
 }
 func listUp(g *c.Gui, v *c.View) error {
@@ -293,23 +310,52 @@ func listPgUp(g *c.Gui, v *c.View) error {
 }
 
 func loadNews(g *c.Gui, v *c.View) error {
-
 	if v == rrList.View {
 		currItem := rrList.CurrentItem()
 		rssReader := currItem.(db.RssReader)
-		UpdateNews(rssReader)
+
+		events, err := retrieveNews(rssReader)
+		if err != nil {
+			newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
+			newsList.Clear()
+		} else {
+			UpdateNews(events, rssReader.Name)
+		}
 	}
 
 	return nil
 }
 
 func openBrowser(g *c.Gui, v *c.View) error {
-
 	if v == newsList.View {
 		currItem := newsList.CurrentItem()
-		event := currItem.(news.Event)
-		cmnd := exec.Command("chromium", event.Link)
+		event := currItem.(db.Event)
+		cmnd := exec.Command("chromium", event.Url)
 		cmnd.Start()
+	}
+	return nil
+}
+
+func bookmark(g *c.Gui, v *c.View) error {
+	if v == newsList.View {
+		currItem := newsList.CurrentItem()
+		event := currItem.(db.Event)
+		if err := tdb.AddEvent(event); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func showBookmarks(g *c.Gui, v *c.View) error {
+	events, err := tdb.GetEvents()
+	source := "My bookmarks"
+	if err != nil {
+		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", source)
+		newsList.Clear()
+	} else {
+		UpdateNews(events, source)
 	}
 	return nil
 }
