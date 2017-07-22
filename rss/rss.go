@@ -3,30 +3,30 @@ package rss
 import (
 	"errors"
 	"fmt"
-	"github.com/antavelos/terminews/news"
+	"github.com/antavelos/terminews/db"
 	"github.com/mmcdole/gofeed"
 	"regexp"
 )
 
-func Retrieve(url string) ([]news.Event, error) {
+func Retrieve(url string) ([]db.Event, error) {
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL(url)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Failed to retrieve news from: '%v'", url))
 	}
 
-	var events []news.Event
+	var events []db.Event
 	for _, item := range feed.Items {
-		e := news.Event{}
-		e.Title = removeSpecialCharacters(item.Title)
+		e := db.Event{}
+		e.Title = item.Title
 		if item.Author != nil {
-			e.Author = removeSpecialCharacters(item.Author.Name)
+			e.Author = item.Author.Name
 		} else {
 			e.Author = "Unknown"
 		}
-		e.Link = item.Link
-		e.Description = trimDescription(removeSpecialCharacters(item.Description))
-		e.Published = removeSpecialCharacters(item.Published)
+		e.Url = item.Link
+		e.Summary = trimSummary(item.Description)
+		e.Published = item.Published
 
 		events = append(events, e)
 	}
@@ -34,14 +34,8 @@ func Retrieve(url string) ([]news.Event, error) {
 	return events, nil
 }
 
-func trimDescription(desc string) string {
+func trimSummary(desc string) string {
 	var re = regexp.MustCompile(`(<.*?>)`)
 
 	return re.ReplaceAllString(desc, ``)
-}
-
-func removeSpecialCharacters(s string) string {
-	var re = regexp.MustCompile(`([’‘])`)
-
-	return re.ReplaceAllString(s, `'`)
 }

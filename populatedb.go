@@ -18,7 +18,7 @@ func main() {
 	data = append(data, db.RssReader{Name: "New York Times Science", Url: "http://rss.nytimes.com/services/xml/rss/nyt/Science.xml"})
 	data = append(data, db.RssReader{Name: "Eureca Alert, Breaking news", Url: "https://www.eurekalert.org/rss.xml"})
 
-	if tdb, err = db.InitDB("terminews.db"); err != nil {
+	if tdb, err = db.InitDB("term.db"); err != nil {
 		log.Fatal(err)
 	}
 	if err = tdb.CreateTables(); err != nil {

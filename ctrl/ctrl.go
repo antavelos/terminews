@@ -1,374 +1,361 @@
 package ctrl
 
 import (
+	"bytes"
 	"fmt"
+	"log"
+	"os/exec"
+
 	"github.com/antavelos/terminews/db"
-	"github.com/antavelos/terminews/news"
 	"github.com/antavelos/terminews/rss"
 	"github.com/antavelos/terminews/ui"
-	gc "github.com/rthornton128/goncurses"
-	"log"
-	"strings"
+	c "github.com/jroimartin/gocui"
 )
 
 const (
-	RSS_READERS_WINDOW = iota
-	NEWS_WINDOW
+	RSS_READERS_VIEW = "rssreaders"
+	NEWS_VIEW        = "news"
+	SUMMARY_VIEW     = "summary"
 )
 
-const (
-	FOCUSED_WINDOW   = 1
-	UNFOCUSED_WINDOW = 2
-	ERROR_WINDOW     = 3
-)
+// Items to fill the list with.
+var listItems = []string{
+	"Line 1",
+	"Line 2",
+	"Line 3",
+	"Line 4",
+	"Line 5",
+}
 
 var (
-	tdb                                *db.TDB
-	stdscr                             *gc.Window
-	rssReadersWin, newsWin             *ui.TWindow
-	rssReadersMenu, newsMenu           *ui.TMenu
-	rssReadersMenuItems, newsMenuItems []*ui.TMenuItem
-	windows                            []*ui.TWindow
-	panels                             []*gc.Panel
-	activeWindow                       int
-	activeRssReadersMenuItem           int
-	activeNewsMenuItem                 int
-	err                                error
-	maxX                               int
-	maxY                               int
+	tdb      *db.TDB
+	g        *c.Gui
+	err      error
+	rrList   *ui.List
+	newsList *ui.List
+	summary  *c.View
 )
 
-func CreateRssReadersMenu() error {
-	// Menu
-	rssReadersMenu = &ui.TMenu{}
-	if err = rssReadersMenu.Create(); err != nil {
-		return err
-	}
-	// Window
-	rssReadersWin = &ui.TWindow{}
-	if err = rssReadersWin.Create("My RSS Readers", maxY, maxX/4, 0, 0); err != nil {
-		return err
-	}
-	windows = append(windows, rssReadersWin)
-
-	// attach rssReadersMenu on rssReadersWindow
-	rssReadersWin.AttachMenu(rssReadersMenu)
-
-	panels = append(panels, gc.NewPanel(rssReadersWin.Window))
-
-	rssReadersMenu.Post()
-	rssReadersWin.Refresh()
-
-	return nil
-}
-
-func CreateNewsMenu() error {
-	// Menu
-	newsMenu = &ui.TMenu{}
-	if err = newsMenu.Create(); err != nil {
-		return err
-	}
-
-	newsWin = &ui.TWindow{}
-	if err = newsWin.Create("", maxY, (maxX*3)/4, 0, maxX/4); err != nil {
-		return err
-	}
-	newsWin.SetHLine(maxY / 2)
-	windows = append(windows, newsWin)
-
-	// attach newsMenu on newsWindow
-	newsWin.AttachMenu(newsMenu)
-
-	panels = append(panels, gc.NewPanel(newsWin.Window))
-	activeWindow = NEWS_WINDOW
-	// panels[NEWS_WINDOW].Top()
-
-	newsMenu.Post()
-	newsWin.Refresh()
-
-	return nil
-}
-
-func UpdateRssReadersMenuItems(rssReaders []db.RssReader) error {
-	var displayers []ui.Displayer = make([]ui.Displayer, len(rssReaders))
-	for i, rr := range rssReaders {
-		displayers[i] = rr
-	}
-	rssReadersMenu.UnPost()
-	tmis, err := rssReadersMenu.RefreshItems(displayers)
-	if err != nil {
-		return err
-	}
-	rssReadersMenu.Post()
-	rssReadersMenuItems = tmis
-
-	return nil
-}
-
-func UpdateNewsMenuItems(events []news.Event) error {
-	var displayers []ui.Displayer = make([]ui.Displayer, len(events))
-	for i, e := range events {
-		displayers[i] = e
-	}
-	newsMenu.UnPost()
-	tmis, err := newsMenu.RefreshItems(displayers)
-	if err != nil {
-		return err
-	}
-	newsMenuItems = tmis
-	newsMenu.Post()
-
-	return nil
-}
-
-func LoadNews(rssReader db.RssReader) {
-	events, err := rss.Retrieve(rssReader.Url)
-	if err != nil {
-		handleNewsLoadError(err.Error())
-	}
-	if err = UpdateNewsMenuItems(events); err != nil {
-		handleUIFatalError(err)
-	}
-	LoadNewsContent(events[0])
-	newsWin.SetTitle(fmt.Sprintf("News from %v", rssReader.Name))
-}
-func clearNewsContent() {
-	for h := (newsWin.H / 2) + 1; h <= newsWin.H; h++ {
-		newsWin.Move(h, 1)
-		newsWin.ClearToEOL()
-	}
-}
-
-func LoadNewsContent(event news.Event) {
-	clearNewsContent()
-	newsWin.Focus(FOCUSED_WINDOW)
-	rssReadersWin.Unfocus(UNFOCUSED_WINDOW)
-	activeWindow = NEWS_WINDOW
-	authorLine := fmt.Sprintf("By %v", string(event.Author))
-	publishedLine := fmt.Sprintf("Published on: %v", event.Published)
-	summaryLine := processDescription(string(event.Description))
-	halfway := (newsWin.H / 2)
-
-	newsWin.SetHLine(halfway)
-	newsWin.SetLine(authorLine, (halfway + 1), 2)
-	newsWin.SetLine(publishedLine, (halfway + 2), 2)
-	for i, s := range summaryLine {
-		newsWin.SetLine(s, (halfway + 4 + i), 2)
-	}
-}
-
-func processDescription(desc string) []string {
-	str := strings.Split(desc, " ")
-	trim := make([]string, len(str))
-	for i, s := range str {
-		trim[i] = strings.TrimSpace(s)
-	}
-
-	var ret []string
-	w := newsWin.W - 4
-	gc.End()
-	// i := 0
-	c := w
-	a := 0
-	b := 1
-	for _, s := range trim {
-		l := len(s) + 1
-		if c-l < 0 {
-			ret = append(ret, strings.Join(trim[a:b-1], " "))
-			c = w
-			a = b - 1
-			continue
-		}
-		c -= l
-		b += 1
-	}
-	ret = append(ret, strings.Join(trim[a:b-1], " "))
-
-	return ret
-}
-
-// the order mstters!!!
-func Free() {
-	var tmi *ui.TMenuItem
-
-	rssReadersMenu.UnPost()
-	newsMenu.UnPost()
-
-	for _, tmi = range rssReadersMenuItems {
-		tmi.MenuItem.Free()
-	}
-	for _, tmi = range newsMenuItems {
-		tmi.MenuItem.Free()
-	}
-
-	if err := rssReadersMenu.Free(); err != nil {
-		handleUIFatalError(err)
-	}
-	if err := newsMenu.Free(); err != nil {
-		handleUIFatalError(err)
-	}
-
-	gc.End()
-}
-
-func handleUIFatalError(err error) {
-	gc.End()
-	log.Fatal(err)
-}
-
-func handleDBFatalError(err error) {
+func handleFatalError(msg string, err error) {
 	tdb.Close()
-	log.Fatal(err)
+	g.Close()
+	log.Fatal(msg, err)
 }
 
-func handleNewsLoadError(rrName string) {
-	newsWin.SetTitle(err.Error())
-	newsWin.Focus(ERROR_WINDOW)
-	activeWindow = NEWS_WINDOW
+func spaces(n int) string {
+	var s bytes.Buffer
+	for i := 0; i < n; i++ {
+		s.WriteString(" ")
+	}
+	return s.String()
+
 }
 
-func InitUI() error {
-	stdscr, err = gc.Init()
+func CreateViews() {
+	tw, th := g.Size()
+
+	lw := (tw * 3) / 10
+	oh := (th * 70) / 100
+
+	// RSS Readers List
+	rrList, err = ui.CreateList(g, RSS_READERS_VIEW, 0, 0, lw, th-1)
 	if err != nil {
-		return err
+		handleFatalError("Failed to create rssreaders list:", err)
 	}
 
-	maxY, maxX = stdscr.MaxYX()
-	// Initial configuration
-	gc.StartColor()
-	gc.Raw(true)
-	gc.Echo(false)
-	gc.Cursor(0)
-	stdscr.Keypad(true)
-	stdscr.Clear()
-
-	// Define color combinations
-	gc.InitPair(FOCUSED_WINDOW, gc.C_GREEN, gc.C_BLACK)
-	gc.InitPair(UNFOCUSED_WINDOW, gc.C_WHITE, gc.C_BLACK)
-	gc.InitPair(ERROR_WINDOW, gc.C_RED, gc.C_BLACK)
-
-	return nil
-}
-
-func onRssReadersWin() bool {
-	return activeWindow == RSS_READERS_WINDOW
-}
-
-func onNewsWin() bool {
-	return activeWindow == NEWS_WINDOW
-}
-
-func Loop() {
-	for {
-		rssReadersWin.Refresh()
-		newsWin.Refresh()
-
-		gc.Update()
-		switch ch := newsWin.GetChar(); ch {
-		case 'q':
-			rssReadersWin.Clear()
-			newsWin.Clear()
-			return
-		case gc.KEY_TAB:
-			activeWindow += 1
-			if activeWindow > 1 {
-				activeWindow = 0
-			}
-			panels[activeWindow].Top()
-			for i, w := range windows {
-				if i == activeWindow {
-					w.Focus(FOCUSED_WINDOW)
-				} else {
-					w.Unfocus(UNFOCUSED_WINDOW)
-				}
-			}
-		default:
-			key := gc.Key(ch)
-			if onRssReadersWin() {
-				rssReadersMenu.Driver(gc.DriverActions[key])
-			} else {
-				newsMenu.Driver(gc.DriverActions[key])
-			}
-			if key == gc.KEY_UP {
-				var active *int
-				if onRssReadersWin() {
-					active = &activeRssReadersMenuItem
-				} else {
-					active = &activeNewsMenuItem
-				}
-				if *active > 0 {
-					*active -= 1
-				}
-				if onNewsWin() {
-					item := newsMenuItems[activeNewsMenuItem]
-					event := item.Data.(news.Event)
-					LoadNewsContent(event)
-				}
-			}
-			if key == gc.KEY_DOWN {
-				var active *int
-				var menuItems []*ui.TMenuItem
-				if onRssReadersWin() {
-					active = &activeRssReadersMenuItem
-					menuItems = rssReadersMenuItems
-				} else {
-					active = &activeNewsMenuItem
-					menuItems = newsMenuItems
-
-				}
-				if *active < len(menuItems)-1 {
-					*active += 1
-				}
-				if onNewsWin() {
-					item := newsMenuItems[activeNewsMenuItem]
-					event := item.Data.(news.Event)
-					LoadNewsContent(event)
-				}
-			}
-			if key == gc.KEY_RETURN || key == gc.KEY_ENTER {
-				if onRssReadersWin() {
-					item := rssReadersMenuItems[activeRssReadersMenuItem]
-					rssReader := item.Data.(db.RssReader)
-					LoadNews(rssReader)
-				}
-			}
-		}
+	//
+	newsList, err = ui.CreateList(g, NEWS_VIEW, lw+1, 0, tw-1, oh)
+	if err != nil {
+		handleFatalError(" Failed to create news list:", err)
 	}
+
+	// Summary view
+	summary, err = g.SetView(SUMMARY_VIEW, lw+1, oh+1, tw-1, th-1)
+	if err != nil && err != c.ErrUnknownView {
+		handleFatalError("Failed to create summary view:", err)
+	}
+	summary.Title = " Summary "
+	summary.Wrap = true
 }
 
+func UpdateSummary(event db.Event) {
+	summary.Clear()
+	fmt.Fprintf(summary, "\n\n By %v\n", event.Author)
+	fmt.Fprintf(summary, " Published on %v\n\n", event.Published)
+	fmt.Fprintf(summary, " %v", event.Summary)
+}
+
+func UpdateNews(events []db.Event, from string) {
+	var data []ui.Displayer = make([]ui.Displayer, len(events))
+	for i, e := range events {
+		data[i] = e
+	}
+
+	if err = newsList.SetItems(data); err != nil {
+		handleFatalError("Failed to update news list", err)
+	}
+	newsList.SetTitle(fmt.Sprintf("News from %v", from))
+	newsList.Focus(g)
+	newsList.ResetCursor()
+	UpdateSummary(events[0])
+}
+
+func LoadRssReaders() []db.RssReader {
+	rssReaders, err := tdb.GetRssReaders()
+	if err != nil {
+		handleFatalError("Failed to load RSS Readers", err)
+	}
+	var data []ui.Displayer = make([]ui.Displayer, len(rssReaders))
+	for i, rr := range rssReaders {
+		data[i] = rr
+	}
+
+	if err = rrList.SetItems(data); err != nil {
+		handleFatalError("Failed to update rss readers list", err)
+	}
+
+	rrList.SetTitle("RSS Readers")
+	return rssReaders
+}
+
+func retrieveNews(rr db.RssReader) ([]db.Event, error) {
+	events, err := rss.Retrieve(rr.Url)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+func InitUI() {
+	// Create a new GUI.
+	g, err = c.NewGui(c.OutputNormal)
+	if err != nil {
+		handleFatalError("Failed to initialize GUI", err)
+	}
+
+	// g.Cursor = true
+	g.SelFgColor = c.ColorGreen
+	g.BgColor = c.ColorDefault
+	g.Highlight = true
+
+	g.SetManagerFunc(layout)
+}
+
+func Free() {
+	g.Close()
+}
+
+// Set up the widgets and run the event loop.
 func Main() {
-	var rssReaders []db.RssReader
-
 	// Init DB
-	if tdb, err = db.InitDB("./terminews.db"); err != nil {
-		handleDBFatalError(err)
+	if tdb, err = db.InitDB("./term.db"); err != nil {
+		tdb.Close()
+		log.Fatal(err)
 	}
 
-	// Init UI components
-	if err = InitUI(); err != nil {
-		handleUIFatalError(err)
-	}
-
-	if err = CreateRssReadersMenu(); err != nil {
-		handleUIFatalError(err)
-	}
-
-	if err = CreateNewsMenu(); err != nil {
-		handleUIFatalError(err)
-	}
-
-	// Load RSS Readers data
-	if rssReaders, err = tdb.GetRssReaders(); err != nil {
-		handleDBFatalError(err)
-	}
-	if err = UpdateRssReadersMenuItems(rssReaders); err != nil {
-		handleUIFatalError(err)
-	}
-
-	// Load News
-	LoadNews(rssReaders[0])
-
+	InitUI()
 	defer Free()
 
-	Loop()
+	CreateViews()
+
+	rssReaders := LoadRssReaders()
+	events, err := retrieveNews(rssReaders[0])
+	if err != nil {
+		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReaders[0].Name)
+		newsList.Clear()
+	} else {
+		UpdateNews(events, rssReaders[0].Name)
+	}
+
+	err = g.SetKeybinding("", rune('q'), c.ModNone, quit)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", rune('o'), c.ModNone, openBrowser)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", rune('b'), c.ModNone, bookmark)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyCtrlB, c.ModNone, showBookmarks)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, listUp)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, listDown)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyPgup, c.ModNone, listPgUp)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, listPgDown)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+
+	err = g.SetKeybinding("", c.KeyEnter, c.ModNone, loadNews)
+	if err != nil {
+		handleFatalError("Could not set key binding:", err)
+	}
+	// Start the main loop.
+	g.MainLoop()
+}
+
+// The layout handler calculates all sizes depending
+// on the current terminal size.
+func layout(g *c.Gui) error {
+	// Get the current terminal size.
+	tw, th := g.Size()
+
+	lw := (tw * 3) / 10
+	oh := (th * 70) / 100
+
+	_, err := g.SetView(RSS_READERS_VIEW, 0, 0, lw, th-1)
+	if err != nil {
+		handleFatalError("Cannot update list view", err)
+	}
+	_, err = g.SetView(NEWS_VIEW, lw+1, 0, tw-1, oh)
+	if err != nil {
+		handleFatalError("Cannot update output view", err)
+	}
+	_, err = g.SetView(SUMMARY_VIEW, lw+1, oh+1, tw-1, th-1)
+	if err != nil {
+		handleFatalError("Cannot update input view.", err)
+	}
+	return nil
+}
+
+// `quit` is a handler that gets bound to Ctrl-C.
+// It signals the main loop to exit.
+func quit(g *c.Gui, v *c.View) error {
+	return c.ErrQuit
+}
+
+func switchView(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		newsList.Focus(g)
+		rrList.Unfocus()
+	} else {
+		rrList.Focus(g)
+		newsList.Unfocus()
+	}
+	return nil
+}
+
+func updateCurrentSummary() {
+	currItem := newsList.CurrentItem()
+	event := currItem.(db.Event)
+	UpdateSummary(event)
+}
+func listUp(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MoveUp()
+	} else {
+		newsList.MoveUp()
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func listDown(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MoveDown()
+	} else {
+		newsList.MoveDown()
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func listPgDown(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MovePgDown()
+	} else {
+		newsList.MovePgDown()
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func listPgUp(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		rrList.MovePgUp()
+	} else {
+		newsList.MovePgUp()
+		updateCurrentSummary()
+	}
+
+	return nil
+}
+
+func loadNews(g *c.Gui, v *c.View) error {
+	if v == rrList.View {
+		currItem := rrList.CurrentItem()
+		rssReader := currItem.(db.RssReader)
+
+		events, err := retrieveNews(rssReader)
+		if err != nil {
+			newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
+			newsList.Clear()
+		} else {
+			UpdateNews(events, rssReader.Name)
+		}
+	}
+
+	return nil
+}
+
+func openBrowser(g *c.Gui, v *c.View) error {
+	if v == newsList.View {
+		currItem := newsList.CurrentItem()
+		event := currItem.(db.Event)
+		cmnd := exec.Command("chromium", event.Url)
+		cmnd.Start()
+	}
+	return nil
+}
+
+func bookmark(g *c.Gui, v *c.View) error {
+	if v == newsList.View {
+		currItem := newsList.CurrentItem()
+		event := currItem.(db.Event)
+		if err := tdb.AddEvent(event); err != nil {
+			return err
+		}
+
+	}
+	return nil
+}
+
+func showBookmarks(g *c.Gui, v *c.View) error {
+	events, err := tdb.GetEvents()
+	source := "My bookmarks"
+	if err != nil {
+		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", source)
+		newsList.Clear()
+	} else {
+		UpdateNews(events, source)
+	}
+	return nil
 }

@@ -2,126 +2,231 @@ package ui
 
 import (
 	"fmt"
-	gc "github.com/rthornton128/goncurses"
+	c "github.com/jroimartin/gocui"
+	_ "log"
 )
 
 type Displayer interface {
 	Display() string
 }
 
-type TMenuItem struct {
-	*gc.MenuItem
-	inc  int
-	Data Displayer
+type List struct {
+	*c.View
+	name, title string
+	Items       []Displayer
+	currPage    int
 }
 
-func (tmi *TMenuItem) Create(inc int, data Displayer) error {
-	value := fmt.Sprintf(`%3d. %+q`, inc, data.Display())
-	item, err := gc.NewItem(value, "")
-	if err != nil {
-		return err
-	}
-	tmi.inc = inc
-	tmi.Data = data
-	tmi.MenuItem = item
-
-	return nil
-}
-
-type TMenu struct {
-	*gc.Menu
-	items []*TMenuItem
-}
-
-func (tm *TMenu) Create() error {
-	menu, err := gc.NewMenu([]*gc.MenuItem{})
-	if err != nil {
-		return err
-	}
-	tm.Menu = menu
-
-	return nil
-}
-
-func (tm *TMenu) RefreshItems(dataItems []Displayer) ([]*TMenuItem, error) {
-	var tmis []*TMenuItem
-	var gcItems []*gc.MenuItem
-
-	for _, gcmi := range tm.Items() {
-		gcmi.Free()
-	}
-
-	for i, data := range dataItems {
-		tmi := &TMenuItem{}
-		if err := tmi.Create(i+1, data); err != nil {
-			return nil, err
-		}
-		tmis = append(tmis, tmi)
-	}
-	for _, tmi := range tmis {
-		gcItems = append(gcItems, tmi.MenuItem)
-	}
-	if err := tm.SetItems(gcItems); err != nil {
+func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
+	v, err := g.SetView(name, x0, y0, x1, y1)
+	if err != nil && err != c.ErrUnknownView {
 		return nil, err
 	}
-	tm.items = tmis
 
-	return tmis, nil
+	list := &List{}
+	list.View = v
+	list.name = name
+	list.currPage = 1
+	list.SelBgColor = c.ColorWhite
+	list.SelFgColor = c.ColorBlack
+	list.Autoscroll = true
+
+	return list, nil
 }
 
-type TWindow struct {
-	*gc.Window
-	title      string
-	H, W, Y, X int
+func (l *List) height() int {
+	_, y := l.Size()
+	return y - 1
 }
 
-func (tw *TWindow) Create(title string, h, w, y, x int) error {
-	win, err := gc.NewWindow(h, w, y, x)
-	if err != nil {
+func (l *List) width() int {
+	x, _ := l.Size()
+	return x
+}
+
+func (l *List) length() int {
+	return len(l.Items)
+}
+
+func (l *List) pages() int {
+	d := l.length() / l.height()
+
+	if l.length()%l.height() > 0 {
+		d++
+	}
+
+	return d
+}
+
+func (l *List) nextPage() (int, int) {
+	if l.currPage < l.pages() {
+		l.currPage++
+	}
+	return l.getPage(l.currPage)
+}
+
+func (l *List) prevPage() (int, int) {
+	if l.currPage > 1 {
+		l.currPage--
+	}
+	return l.getPage(l.currPage)
+}
+
+func (l *List) firstPage() (int, int) {
+	l.currPage = 1
+	return l.getPage(l.currPage)
+}
+
+func (l *List) lastPage() (int, int) {
+	l.currPage = l.pages()
+	return l.getPage(l.currPage)
+}
+
+func (l *List) hasNextPage() bool {
+	return (l.pages() - l.currPage) > 0
+}
+
+func (l *List) hasPrevPage() bool {
+	return l.currPage > 1
+}
+
+func (l *List) getPage(p int) (int, int) {
+	var start, end int
+	start = (p - 1) * l.height()
+	if p == l.pages() {
+		end = l.length()
+	} else {
+		end = start + l.height()
+	}
+	return start, end
+}
+
+func (l *List) Focus(g *c.Gui) error {
+	if _, err := g.SetCurrentView(l.name); err != nil {
 		return err
 	}
-	tw.Window = win
-	tw.H = h
-	tw.W = w
-	tw.Y = y
-	tw.X = x
+	l.Highlight = true
+	return nil
+}
 
-	tw.Keypad(true)
-	tw.Box(0, 0)
-	tw.SetHLine(2)
-	tw.SetTitle(title)
+func (l *List) Unfocus() {
+	l.Highlight = false
+}
+
+func (l *List) SetTitle(title string) {
+	l.title = title
+	l.Title = fmt.Sprintf(" %d/%d - %v ", l.currPage, l.pages(), title)
+}
+
+func (l *List) SetItems(data []Displayer) error {
+	l.Items = data
+	l.currPage = 1
+	l.display(l.firstPage())
 
 	return nil
 }
 
-func (tw *TWindow) SetTitle(title string) {
-	tw.title = title
-	tw.SetLine(title, 1, (tw.W/2)-(len(title)/2))
+func (l *List) displayItem(i int) string {
+	item := l.Items[i]
+	return fmt.Sprintf("%2d. %v", i+1, item.Display())
 }
 
-func (tw *TWindow) SetHLine(y int) {
-	tw.HLine(y, 1, gc.ACS_HLINE, tw.W-2)
+func (l *List) display(start, end int) error {
+	l.Clear()
+	for i := start; i < end; i++ {
+		if _, err := fmt.Fprintf(l.View, "%v\n", l.displayItem(i)); err != nil {
+			return err
+		}
+	}
+	l.SetTitle(l.title)
+	return nil
 }
 
-func (tw *TWindow) SetLine(s string, y, x int) {
-	tw.MovePrint(y, x, s)
+func (l *List) MoveDown() error {
+	x, y := l.Cursor()
+
+	if y == l.height()-1 || (l.currPage == l.pages() && y == (l.length()%l.height())-1) {
+		y = 0
+		if l.pages() > 1 {
+			if l.hasNextPage() {
+				l.display(l.nextPage())
+			} else {
+				l.display(l.firstPage())
+			}
+		}
+	} else {
+		y++
+	}
+	if err := l.SetCursor(x, y); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (tw *TWindow) Focus(cc int16) {
-	tw.ColorOn(cc)
-	tw.Box(0, 0)
-	tw.ColorOff(cc)
+func (l *List) MoveUp() error {
+	x, y := l.Cursor()
+	if y == 0 {
+		if l.pages() > 1 {
+			if l.hasPrevPage() {
+				y = l.height() - 1
+				l.display(l.prevPage())
+			} else {
+				y = (l.length() % l.height()) - 1
+				l.display(l.lastPage())
+			}
+		} else {
+			y = l.length() - 1
+		}
+	} else {
+		y--
+	}
+
+	if err := l.SetCursor(x, y); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (tw *TWindow) Unfocus(cc int16) {
-	tw.ColorOn(cc)
-	tw.Box(0, 0)
-	tw.ColorOff(cc)
+func (l *List) MovePgDown() error {
+
+	if l.hasNextPage() {
+		l.display(l.nextPage())
+	} else {
+		l.display(l.firstPage())
+	}
+	if err := l.SetCursor(0, 0); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (tw *TWindow) AttachMenu(tm *TMenu) {
-	tm.Menu.SetWindow(tw.Window)
-	tm.Menu.SubWindow(tw.Derived(tw.H-4, tw.W-4, 4, 2))
-	tm.Menu.Format(tw.H-4, 1)
-	tm.Menu.Mark("")
+func (l *List) MovePgUp() error {
+
+	if l.hasPrevPage() {
+		l.display(l.prevPage())
+	} else {
+		l.display(l.lastPage())
+	}
+	if err := l.SetCursor(0, 0); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *List) CurrentItem() Displayer {
+	_, y := l.Cursor()
+
+	start, end := l.getPage(l.currPage)
+	data := l.Items[start:end]
+
+	return data[y]
+}
+
+func (l *List) CurrentPage() int {
+	return l.currPage
+}
+func (l *List) ResetCursor() {
+	l.SetCursor(0, 0)
 }
