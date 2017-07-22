@@ -107,6 +107,6 @@ func (tdb *TDB) DeleteRssReader(id int) error {
 	return nil
 }
 
-func (rr RssReader) Display() string {
+func (rr RssReader) String() string {
 	return rr.Name
 }

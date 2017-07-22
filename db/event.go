@@ -114,6 +114,6 @@ func (tdb *TDB) DeleteEvent(id int) error {
 	return nil
 }
 
-func (e Event) Display() string {
+func (e Event) String() string {
 	return string(e.Title)
 }

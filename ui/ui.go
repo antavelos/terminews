@@ -2,18 +2,15 @@ package ui
 
 import (
 	"fmt"
-	c "github.com/jroimartin/gocui"
-	_ "log"
-)
+	"math"
 
-type Displayer interface {
-	Display() string
-}
+	c "github.com/jroimartin/gocui"
+)
 
 type List struct {
 	*c.View
 	name, title string
-	Items       []Displayer
+	items       []interface{}
 	currPage    int
 }
 
@@ -36,26 +33,29 @@ func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
 
 func (l *List) height() int {
 	_, y := l.Size()
+
 	return y - 1
 }
 
 func (l *List) width() int {
 	x, _ := l.Size()
+
 	return x
 }
 
 func (l *List) length() int {
-	return len(l.Items)
+	return len(l.items)
 }
 
 func (l *List) pages() int {
-	d := l.length() / l.height()
+	return math.Ceil(float64(l.length()) / float64(l.height()))
+	// d := l.length() / l.height()
 
-	if l.length()%l.height() > 0 {
-		d++
-	}
+	// if l.length()%l.height() > 0 {
+	// 	d++
+	// }
 
-	return d
+	// return d
 }
 
 func (l *List) nextPage() (int, int) {
@@ -118,8 +118,8 @@ func (l *List) SetTitle(title string) {
 	l.Title = fmt.Sprintf(" %d/%d - %v ", l.currPage, l.pages(), title)
 }
 
-func (l *List) SetItems(data []Displayer) error {
-	l.Items = data
+func (l *List) SetItems(data []interface{}) error {
+	l.items = data
 	l.currPage = 1
 	l.display(l.firstPage())
 
@@ -127,8 +127,8 @@ func (l *List) SetItems(data []Displayer) error {
 }
 
 func (l *List) displayItem(i int) string {
-	item := l.Items[i]
-	return fmt.Sprintf("%2d. %v", i+1, item.Display())
+	item := l.items[i]
+	return fmt.Sprintf("%2d. %v", i+1, item)
 }
 
 func (l *List) display(start, end int) error {
@@ -215,11 +215,11 @@ func (l *List) MovePgUp() error {
 	return nil
 }
 
-func (l *List) CurrentItem() Displayer {
+func (l *List) CurrentItem() interface{} {
 	_, y := l.Cursor()
 
 	start, end := l.getPage(l.currPage)
-	data := l.Items[start:end]
+	data := l.items[start:end]
 
 	return data[y]
 }

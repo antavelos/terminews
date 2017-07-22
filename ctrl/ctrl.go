@@ -19,15 +19,6 @@ const (
 	SUMMARY_VIEW     = "summary"
 )
 
-// Items to fill the list with.
-var listItems = []string{
-	"Line 1",
-	"Line 2",
-	"Line 3",
-	"Line 4",
-	"Line 5",
-}
-
 var (
 	tdb      *db.TDB
 	g        *c.Gui
@@ -87,7 +78,7 @@ func UpdateSummary(event db.Event) {
 }
 
 func UpdateNews(events []db.Event, from string) {
-	var data []ui.Displayer = make([]ui.Displayer, len(events))
+	data := make([]interface{}, len(events))
 	for i, e := range events {
 		data[i] = e
 	}
@@ -106,7 +97,7 @@ func LoadRssReaders() []db.RssReader {
 	if err != nil {
 		handleFatalError("Failed to load RSS Readers", err)
 	}
-	var data []ui.Displayer = make([]ui.Displayer, len(rssReaders))
+	data := make([]interface{}, len(rssReaders))
 	for i, rr := range rssReaders {
 		data[i] = rr
 	}
@@ -145,6 +136,18 @@ func Free() {
 	g.Close()
 }
 
+func start(g *c.Gui) error {
+	rssReaders := LoadRssReaders()
+	events, err := retrieveNews(rssReaders[0])
+	if err != nil {
+		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReaders[0].Name)
+		newsList.Clear()
+	} else {
+		UpdateNews(events, rssReaders[0].Name)
+	}
+	return nil
+}
+
 // Set up the widgets and run the event loop.
 func Main() {
 	// Init DB
@@ -157,16 +160,7 @@ func Main() {
 	defer Free()
 
 	CreateViews()
-
-	rssReaders := LoadRssReaders()
-	events, err := retrieveNews(rssReaders[0])
-	if err != nil {
-		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReaders[0].Name)
-		newsList.Clear()
-	} else {
-		UpdateNews(events, rssReaders[0].Name)
-	}
-
+	g.Execute(start)
 	addKeybinding(g, "", rune('a'), c.ModNone, addRssReader)
 	addKeybinding(g, "", rune('d'), c.ModNone, deleteRecord)
 	addKeybinding(g, "", rune('b'), c.ModNone, bookmark)
