@@ -16,3 +16,4 @@
 *.db
 populatedb.go
 README.html
+terminews

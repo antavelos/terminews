@@ -1,14 +1,15 @@
-package rss
+package main
 
 import (
 	"errors"
 	"fmt"
+	"regexp"
+
 	"github.com/antavelos/terminews/db"
 	"github.com/mmcdole/gofeed"
-	"regexp"
 )
 
-func Retrieve(url string) ([]db.Event, error) {
+func DownloadFeed(url string) ([]db.Event, error) {
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL(url)
 	if err != nil {
@@ -25,7 +26,7 @@ func Retrieve(url string) ([]db.Event, error) {
 			e.Author = "Unknown"
 		}
 		e.Url = item.Link
-		e.Summary = trimSummary(item.Description)
+		e.Summary = trimHtml(item.Description)
 		e.Published = item.Published
 
 		events = append(events, e)
@@ -34,7 +35,7 @@ func Retrieve(url string) ([]db.Event, error) {
 	return events, nil
 }
 
-func trimSummary(desc string) string {
+func trimHtml(desc string) string {
 	var re = regexp.MustCompile(`(<.*?>)`)
 
 	return re.ReplaceAllString(desc, ``)

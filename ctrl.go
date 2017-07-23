@@ -1,15 +1,11 @@
-package ctrl
+package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
-	"os/exec"
 	"strings"
 
 	"github.com/antavelos/terminews/db"
-	"github.com/antavelos/terminews/rss"
-	"github.com/antavelos/terminews/ui"
 	c "github.com/jroimartin/gocui"
 )
 
@@ -20,11 +16,12 @@ const (
 )
 
 var (
+	Lists    map[string]*List
 	tdb      *db.TDB
 	g        *c.Gui
 	err      error
-	rrList   *ui.List
-	newsList *ui.List
+	rrList   *List
+	newsList *List
 	summary  *c.View
 )
 
@@ -34,13 +31,8 @@ func handleFatalError(msg string, err error) {
 	log.Fatal(msg, err)
 }
 
-func spaces(n int) string {
-	var s bytes.Buffer
-	for i := 0; i < n; i++ {
-		s.WriteString(" ")
-	}
-	return s.String()
-
+func GetList(name string) *List {
+	return Lists[name]
 }
 
 func CreateViews() {
@@ -50,16 +42,17 @@ func CreateViews() {
 	oh := (th * 70) / 100
 
 	// RSS Readers List
-	rrList, err = ui.CreateList(g, RSS_READERS_VIEW, 0, 0, lw, th-1)
+	rrList, err = CreateList(g, RSS_READERS_VIEW, 0, 0, lw, th-1)
 	if err != nil {
 		handleFatalError("Failed to create rssreaders list:", err)
 	}
 
 	//
-	newsList, err = ui.CreateList(g, NEWS_VIEW, lw+1, 0, tw-1, oh)
+	newsList, err = CreateList(g, NEWS_VIEW, lw+1, 0, tw-1, oh)
 	if err != nil {
 		handleFatalError(" Failed to create news list:", err)
 	}
+	newsList.Title = " No news yet ... "
 
 	// Summary view
 	summary, err = g.SetView(SUMMARY_VIEW, lw+1, oh+1, tw-1, th-1)
@@ -110,13 +103,6 @@ func LoadRssReaders() []db.RssReader {
 	return rssReaders
 }
 
-func retrieveNews(rr db.RssReader) ([]db.Event, error) {
-	events, err := rss.Retrieve(rr.Url)
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
-}
 func InitUI() {
 	// Create a new GUI.
 	g, err = c.NewGui(c.OutputNormal)
@@ -136,19 +122,6 @@ func Free() {
 	g.Close()
 }
 
-func start(g *c.Gui) error {
-	rssReaders := LoadRssReaders()
-	events, err := retrieveNews(rssReaders[0])
-	if err != nil {
-		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReaders[0].Name)
-		newsList.Clear()
-	} else {
-		UpdateNews(events, rssReaders[0].Name)
-	}
-	return nil
-}
-
-// Set up the widgets and run the event loop.
 func Main() {
 	// Init DB
 	if tdb, err = db.InitDB("./term.db"); err != nil {
@@ -160,11 +133,13 @@ func Main() {
 	defer Free()
 
 	CreateViews()
-	g.Execute(start)
+
+	LoadRssReaders()
+	rrList.Focus(g)
+
 	addKeybinding(g, "", rune('a'), c.ModNone, addRssReader)
 	addKeybinding(g, "", rune('d'), c.ModNone, deleteRecord)
 	addKeybinding(g, "", rune('b'), c.ModNone, bookmark)
-	addKeybinding(g, "", rune('o'), c.ModNone, openBrowser)
 	addKeybinding(g, "", rune('q'), c.ModNone, quit)
 	addKeybinding(g, "", c.KeyCtrlB, c.ModNone, showBookmarks)
 	addKeybinding(g, "", c.KeyTab, c.ModNone, switchView)
@@ -278,25 +253,21 @@ func loadNews(g *c.Gui, v *c.View) error {
 		currItem := rrList.CurrentItem()
 		rssReader := currItem.(db.RssReader)
 
-		events, err := retrieveNews(rssReader)
-		if err != nil {
-			newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
-			newsList.Clear()
-		} else {
-			UpdateNews(events, rssReader.Name)
-		}
+		newsList.Clear()
+		newsList.Focus(g)
+		newsList.Title = " Downloading ... "
+		g.Execute(func(g *c.Gui) error {
+			events, err := DownloadFeed(rssReader.Url)
+			if err != nil {
+				newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
+				newsList.Clear()
+			} else {
+				UpdateNews(events, rssReader.Name)
+			}
+			return nil
+		})
 	}
 
-	return nil
-}
-
-func openBrowser(g *c.Gui, v *c.View) error {
-	if v == newsList.View {
-		currItem := newsList.CurrentItem()
-		event := currItem.(db.Event)
-		cmnd := exec.Command("chromium", event.Url)
-		cmnd.Start()
-	}
 	return nil
 }
 
