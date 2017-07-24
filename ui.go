@@ -13,33 +13,29 @@ type Page struct {
 
 type List struct {
 	*c.View
-	name, title string
+	title       string
 	items       []interface{}
 	pages       []Page
 	currPageIdx int
 }
 
-func CreateList(g *c.Gui, name string, x0, y0, x1, y1 int) (*List, error) {
-	v, err := g.SetView(name, x0, y0, x1, y1)
-	if err != nil && err != c.ErrUnknownView {
-		return nil, err
-	}
-
+func CreateList(v *c.View) *List {
 	list := &List{}
 	list.View = v
-	list.name = name
-	list.currPageIdx = 0
-	list.pages = []Page{}
 	list.SelBgColor = c.ColorWhite
 	list.SelFgColor = c.ColorBlack
 	list.Autoscroll = true
 
-	return list, nil
+	return list
+}
+
+func (l *List) IsEmpty() bool {
+	return l.length() == 0
 }
 
 func (l *List) Focus(g *c.Gui) error {
 	l.Highlight = true
-	_, err := g.SetCurrentView(l.name)
+	_, err := g.SetCurrentView(l.Name())
 
 	return err
 }
@@ -55,6 +51,13 @@ func (l *List) SetTitle(title string) {
 
 func (l *List) SetItems(data []interface{}) error {
 	l.items = data
+	return l.Draw()
+}
+
+func (l *List) Draw() error {
+	if l.IsEmpty() {
+		return nil
+	}
 	l.currPageIdx = 0
 	l.pages = []Page{}
 	for offset := 0; offset < l.length(); offset += l.height() {
