@@ -63,10 +63,12 @@ func layout(g *c.Gui) error {
 	}
 	updateSummary()
 
-	// if curW != tw || curH != th {
-	// 	rrList.Draw()
-	// 	newsList.Draw()
-	// }
+	if curW != tw || curH != th {
+		rrList.Draw()
+		newsList.Draw()
+		curW = tw
+		curH = th
+	}
 
 	return nil
 }
