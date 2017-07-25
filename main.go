@@ -11,6 +11,7 @@ const (
 	RSS_READERS_VIEW = "rssreaders"
 	NEWS_VIEW        = "news"
 	SUMMARY_VIEW     = "summary"
+	PROMPT_VIEW      = "prompt"
 )
 
 var (
@@ -62,6 +63,13 @@ func layout(g *c.Gui) error {
 		handleFatalError("Cannot update summary view.", err)
 	}
 	updateSummary()
+
+	if _, err = g.View(PROMPT_VIEW); err == nil {
+		_, err = g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+		if err != nil && err != c.ErrUnknownView {
+			return err
+		}
+	}
 
 	if curW != tw || curH != th {
 		rrList.Draw()
@@ -130,17 +138,18 @@ func main() {
 	loadRssReaders()
 	rrList.Focus(g)
 
-	addKeybinding(g, "", rune('a'), c.ModNone, addRssReader)
-	addKeybinding(g, "", rune('d'), c.ModNone, deleteEntry)
-	addKeybinding(g, "", rune('b'), c.ModNone, addBookmark)
-	addKeybinding(g, "", rune('q'), c.ModNone, quit)
-	addKeybinding(g, "", c.KeyCtrlB, c.ModNone, loadBookmarks)
+	addKeybinding(g, "", c.KeyCtrlN, c.ModNone, addRssReader)
+	addKeybinding(g, "", c.KeyDelete, c.ModNone, deleteEntry)
+	addKeybinding(g, NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark)
+	addKeybinding(g, "", c.KeyCtrlC, c.ModNone, quit)
+	addKeybinding(g, "", c.KeyCtrlB, c.ModAlt, loadBookmarks)
 	addKeybinding(g, "", c.KeyTab, c.ModNone, switchView)
 	addKeybinding(g, "", c.KeyArrowUp, c.ModNone, listUp)
 	addKeybinding(g, "", c.KeyArrowDown, c.ModNone, listDown)
 	addKeybinding(g, "", c.KeyPgup, c.ModNone, listPgUp)
 	addKeybinding(g, "", c.KeyPgdn, c.ModNone, listPgDown)
-	addKeybinding(g, "", c.KeyEnter, c.ModNone, loadNews)
+	addKeybinding(g, "", c.KeyEnter, c.ModNone, onEnter)
+	addKeybinding(g, PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt)
 
 	err = g.MainLoop()
 	log.Println("terminews exited unexpectedly: ", err)

@@ -65,6 +65,26 @@ func (tdb *TDB) GetRssReaderById(id int) (RssReader, error) {
 	return rr, nil
 }
 
+func (tdb *TDB) GetRssReaderByUrl(url string) (RssReader, error) {
+	sql_readone := `SELECT Id, Name, Url FROM rssreader WHERE Url = ?`
+
+	stmt, err := tdb.Prepare(sql_readone)
+	defer stmt.Close()
+	if err != nil {
+		return RssReader{}, err
+	}
+
+	var rr RssReader
+	if err = stmt.QueryRow(url).Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
+		if err == sql.ErrNoRows {
+			return RssReader{}, NotFound(fmt.Sprintf("RssReader not found for url: %v", url))
+		}
+		return RssReader{}, err
+	}
+
+	return rr, nil
+}
+
 func (tdb *TDB) AddRssReader(rr RssReader) error {
 	sql_additem := `
     INSERT OR REPLACE INTO rssreader(

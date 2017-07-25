@@ -61,6 +61,32 @@ func loadRssReaders() []db.RssReader {
 	return rssReaders
 }
 
+func createPromptView(g *c.Gui, title string) error {
+	tw, th := g.Size()
+	v, err := g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+	if err != nil && err != c.ErrUnknownView {
+		return err
+	}
+	v.Editable = true
+	v.Title = title
+
+	g.Cursor = true
+	g.SetCurrentView(PROMPT_VIEW)
+
+	return nil
+}
+
+func deletePromptView(g *c.Gui) error {
+	if err := g.DeleteView(PROMPT_VIEW); err != nil {
+		return err
+	}
+	g.Cursor = false
+
+	return nil
+}
+
+// Key binding functions
+
 // `quit` is a handler that gets bound to Ctrl-C.
 // It signals the main loop to exit.
 func quit(g *c.Gui, v *c.View) error {
@@ -122,8 +148,9 @@ func listPgUp(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func loadNews(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
+func onEnter(g *c.Gui, v *c.View) error {
+	switch v.Name() {
+	case RSS_READERS_VIEW:
 		currItem := rrList.CurrentItem()
 		rssReader := currItem.(db.RssReader)
 
@@ -131,7 +158,7 @@ func loadNews(g *c.Gui, v *c.View) error {
 		newsList.Focus(g)
 		newsList.Title = " Downloading ... "
 		g.Execute(func(g *c.Gui) error {
-			events, err := DownloadFeed(rssReader.Url)
+			events, err := DownloadEvents(rssReader.Url)
 			if err != nil {
 				newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
 				newsList.Clear()
@@ -140,13 +167,45 @@ func loadNews(g *c.Gui, v *c.View) error {
 			}
 			return nil
 		})
+	case PROMPT_VIEW:
+		url := strings.TrimSpace(v.ViewBuffer())
+		if len(url) == 0 {
+			return nil
+		}
+		g.Execute(func(g *c.Gui) error {
+			feed, err := CheckUrl(url)
+			if err != nil {
+				v.Title = "Invalid URL, try again - (Ctrl-q to cancel)"
+				g.SelFgColor = c.ColorRed
+				return nil
+			}
+
+			_, err = tdb.GetRssReaderByUrl(url)
+			if _, ok := err.(db.NotFound); !ok {
+				v.Title = "RSS Reader already exists - (Ctrl-q to cancel)"
+				g.SelFgColor = c.ColorRed
+				return nil
+			}
+
+			rr := db.RssReader{Name: feed.Title, Url: url}
+			if err := tdb.AddRssReader(rr); err != nil {
+				return err
+			}
+			deletePromptView(g)
+			g.SelFgColor = c.ColorGreen
+			loadRssReaders()
+			rrList.Focus(g)
+
+			return nil
+		})
 	}
 
 	return nil
 }
 
 func addBookmark(g *c.Gui, v *c.View) error {
-	if v == newsList.View {
+	switch v.Name() {
+	case NEWS_VIEW:
 		currItem := newsList.CurrentItem()
 		event := currItem.(db.Event)
 		if err := tdb.AddEvent(event); err != nil {
@@ -189,6 +248,19 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 	return nil
 }
 
+func removePrompt(g *c.Gui, v *c.View) error {
+	if v.Name() == PROMPT_VIEW {
+		rrList.Focus(g)
+		g.SelFgColor = c.ColorGreen
+		return deletePromptView(g)
+	}
+	return nil
+}
+
 func addRssReader(g *c.Gui, v *c.View) error {
+	if err := createPromptView(g, "Give a new RSS reader URL: (Ctrl-q to cancel)"); err != nil {
+		return err
+	}
+
 	return nil
 }
