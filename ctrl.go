@@ -136,8 +136,10 @@ func listUp(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MoveUp()
 	} else {
-		newsList.MoveUp()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MoveUp()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -147,8 +149,10 @@ func listDown(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MoveDown()
 	} else {
-		newsList.MoveDown()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MoveDown()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -158,8 +162,10 @@ func listPgDown(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MovePgDown()
 	} else {
-		newsList.MovePgDown()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MovePgDown()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -169,8 +175,10 @@ func listPgUp(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MovePgUp()
 	} else {
-		newsList.MovePgUp()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MovePgUp()
+			updateSummary()
+		}
 	}
 
 	return nil
