@@ -9,9 +9,17 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
-func DownloadFeed(url string) ([]db.Event, error) {
+func CheckUrl(url string) (*gofeed.Feed, error) {
 	fp := gofeed.NewParser()
-	feed, err := fp.ParseURL(url)
+	return fp.ParseURL(url)
+	// if err != nil {
+	// 	return nil, false
+	// }
+	// return feed, true
+}
+
+func DownloadEvents(url string) ([]db.Event, error) {
+	feed, err := CheckUrl(url)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Failed to retrieve news from: '%v'", url))
 	}
