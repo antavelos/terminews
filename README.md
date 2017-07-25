@@ -12,19 +12,12 @@
 * [Sqlite3](https://www.sqlite.org/)
 	For storing RSS readers' data and bookmarking news.
 
-Get the source code:
+Steps:
 
     go get github.com/antavelos/terminews
 	cd $GOPATH/src/github.com/antavelos/terminews
-
-build it:
-
 	go build
-
-and run it:
-
 	./terminews
-
 
 
 ## Usage
@@ -38,18 +31,18 @@ The terminal is split in 3 different areas:
 For both lists the items are displayed paged.
 
 ### Key bindings
-| Key | Description |
-|-----|-------------|
-|<kbd>Tab</kbd>|focuses between the RSS Readers list and the News list alternately
-|<kbd>Enter</kbd>|retrieves the news feed of the currently selected RSS reader
-|<kbd>b</kbd>|adds the currently selected event in the bookmarks list
-|<kbd>Ctrl</kbd><kbd>b</kbd>|displayes the bookmarked events
-|<kbd>d</kbd>|deletes the selected RSS reader of the selected bookmarked event depending on which list is currently focused
-|<kbd>&uarr;</kbd>|moves to the previous list item circularly
-|<kbd>&darr;</kbd>|moves to the next list item circularly
-|<kbd>PgUp</kbd>|moves to the previous list page circularly
-|<kbd>PgDn</kbd>|moves to the next list page circularly
-|<kbd>q</kbd>|exit the application
+ Key combination | Description
+---|---
+<kbd>Tab</kbd>|focuses between the RSS Readers list and the News list alternately
+<kbd>Enter</kbd>|retrieves the news feed of the currently selected RSS reader
+<kbd>Ctrl</kbd><kbd>b</kbd>|adds the currently selected event in the bookmarks list
+<kbd>Alt</kbd><kbd>b</kbd>|displayes the bookmarked events
+<kbd>Del</kbd>|deletes the selected RSS reader of the selected bookmarked event depending on which list is currently focused
+<kbd>&uarr;</kbd>|moves to the previous list item circularly
+<kbd>&darr;</kbd>|moves to the next list item circularly
+<kbd>PgUp</kbd>|moves to the previous list page circularly
+<kbd>PgDn</kbd>|moves to the next list page circularly
+<kbd>Ctrl</kbd><kbd>c</kbd>|exit the application
 
 
 ## TODO
