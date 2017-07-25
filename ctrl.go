@@ -23,12 +23,17 @@ func updateSummary() {
 	event := currItem.(db.Event)
 
 	summary.Clear()
-	fmt.Fprintf(summary, "\n\n By %v\n", event.Author)
-	fmt.Fprintf(summary, " Published on %v\n\n", event.Published)
+	fmt.Fprintf(summary, "\n\n %v %v\n", Bold.Sprint("By"), event.Author)
+	fmt.Fprintf(summary, " %v %v\n\n", Bold.Sprint("Published on"), event.Published)
 	fmt.Fprintf(summary, " %v", event.Summary)
 }
 
 func updateNews(g *c.Gui, events []db.Event, from string) {
+	if len(events) == 0 {
+		newsList.SetTitle(fmt.Sprintf("No news in %v", from))
+		summary.Clear()
+		return
+	}
 	data := make([]interface{}, len(events))
 	for i, e := range events {
 		data[i] = e
@@ -176,14 +181,14 @@ func onEnter(g *c.Gui, v *c.View) error {
 			feed, err := CheckUrl(url)
 			if err != nil {
 				v.Title = "Invalid URL, try again - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed
+				g.SelFgColor = c.ColorRed | c.AttrBold
 				return nil
 			}
 
 			_, err = tdb.GetRssReaderByUrl(url)
 			if _, ok := err.(db.NotFound); !ok {
 				v.Title = "RSS Reader already exists - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed
+				g.SelFgColor = c.ColorRed | c.AttrBold
 				return nil
 			}
 
@@ -192,7 +197,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 				return err
 			}
 			deletePromptView(g)
-			g.SelFgColor = c.ColorGreen
+			g.SelFgColor = c.ColorGreen | c.AttrBold
 			loadRssReaders()
 			rrList.Focus(g)
 
@@ -251,7 +256,7 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 func removePrompt(g *c.Gui, v *c.View) error {
 	if v.Name() == PROMPT_VIEW {
 		rrList.Focus(g)
-		g.SelFgColor = c.ColorGreen
+		g.SelFgColor = c.ColorGreen | c.AttrBold
 		return deletePromptView(g)
 	}
 	return nil

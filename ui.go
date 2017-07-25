@@ -22,8 +22,8 @@ type List struct {
 func CreateList(v *c.View) *List {
 	list := &List{}
 	list.View = v
-	list.SelBgColor = c.ColorWhite
-	list.SelFgColor = c.ColorBlack
+	list.SelBgColor = c.ColorBlack
+	list.SelFgColor = c.ColorWhite | c.AttrBold
 	list.Autoscroll = true
 
 	return list
@@ -46,7 +46,11 @@ func (l *List) Unfocus() {
 
 func (l *List) SetTitle(title string) {
 	l.title = title
-	l.Title = fmt.Sprintf(" %d/%d - %v ", l.currPageIdx+1, l.pagesNum(), title)
+	currPageNum := l.currPageIdx + 1
+	if l.IsEmpty() {
+		currPageNum = 0
+	}
+	l.Title = fmt.Sprintf(" %d/%d - %v ", currPageNum, l.pagesNum(), title)
 }
 
 func (l *List) SetItems(data []interface{}) error {

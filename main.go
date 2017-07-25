@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/antavelos/terminews/db"
+	"github.com/fatih/color"
 	c "github.com/jroimartin/gocui"
 )
 
@@ -24,6 +25,7 @@ var (
 	summary  *c.View
 	curW     int
 	curH     int
+	Bold     *color.Color
 )
 
 func handleFatalError(msg string, err error) {
@@ -36,7 +38,6 @@ func relSize(g *c.Gui) (int, int) {
 	tw, th := g.Size()
 
 	return (tw * 3) / 10, (th * 70) / 100
-
 }
 
 // The layout handler calculates all sizes depending
@@ -86,6 +87,7 @@ func main() {
 	var v *c.View
 	var err error
 
+	Bold = color.New(color.Bold)
 	Lists = make(map[string]*List)
 
 	// Init DB
@@ -102,7 +104,7 @@ func main() {
 	}
 	defer g.Close()
 
-	g.SelFgColor = c.ColorGreen
+	g.SelFgColor = c.ColorGreen | c.AttrBold
 	g.BgColor = c.ColorDefault
 	g.Highlight = true
 
