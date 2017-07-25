@@ -66,7 +66,7 @@ func layout(g *c.Gui) error {
 	updateSummary()
 
 	if _, err = g.View(PROMPT_VIEW); err == nil {
-		_, err = g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+		_, err = g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
 		if err != nil && err != c.ErrUnknownView {
 			return err
 		}
@@ -152,6 +152,7 @@ func main() {
 	addKeybinding(g, "", c.KeyPgdn, c.ModNone, listPgDown)
 	addKeybinding(g, "", c.KeyEnter, c.ModNone, onEnter)
 	addKeybinding(g, PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt)
+	addKeybinding(g, "", c.KeyCtrlS, c.ModNone, search)
 
 	err = g.MainLoop()
 	log.Println("terminews exited unexpectedly: ", err)

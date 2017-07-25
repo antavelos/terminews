@@ -68,12 +68,13 @@ func loadRssReaders() []db.RssReader {
 
 func createPromptView(g *c.Gui, title string) error {
 	tw, th := g.Size()
-	v, err := g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+	v, err := g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
 	if err != nil && err != c.ErrUnknownView {
 		return err
 	}
 	v.Editable = true
-	v.Title = title
+	setPromptViewTitle(g, title)
+	// v.Title = title
 
 	g.Cursor = true
 	g.SetCurrentView(PROMPT_VIEW)
@@ -88,6 +89,28 @@ func deletePromptView(g *c.Gui) error {
 	g.Cursor = false
 
 	return nil
+}
+
+func setPromptViewTitle(g *c.Gui, title string) {
+	v, _ := g.View(PROMPT_VIEW)
+	v.Title = fmt.Sprintf("%v (Ctrl-q to cancel)", title)
+}
+
+func isNewRSSPrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "new RSS")
+}
+
+func isSearchPrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "Search")
+}
+
+func termsInEvent(terms []string, e db.Event) bool {
+	for _, t := range terms {
+		if strings.Contains(e.Title, t) || strings.Contains(e.Summary, t) {
+			return true
+		}
+	}
+	return false
 }
 
 // Key binding functions
@@ -173,36 +196,66 @@ func onEnter(g *c.Gui, v *c.View) error {
 			return nil
 		})
 	case PROMPT_VIEW:
-		url := strings.TrimSpace(v.ViewBuffer())
-		if len(url) == 0 {
-			return nil
+		if isNewRSSPrompt(v) {
+			url := strings.TrimSpace(v.ViewBuffer())
+			if len(url) == 0 {
+				return nil
+			}
+			g.Execute(func(g *c.Gui) error {
+				feed, err := CheckUrl(url)
+				if err != nil {
+					setPromptViewTitle(g, "Invalid URL, try again:")
+					g.SelFgColor = c.ColorRed | c.AttrBold
+					return nil
+				}
+
+				_, err = tdb.GetRssReaderByUrl(url)
+				if _, ok := err.(db.NotFound); !ok {
+					setPromptViewTitle(g, "RSS Reader already exists, try again:")
+					g.SelFgColor = c.ColorRed | c.AttrBold
+					return nil
+				}
+
+				rr := db.RssReader{Name: feed.Title, Url: url}
+				if err := tdb.AddRssReader(rr); err != nil {
+					return err
+				}
+				deletePromptView(g)
+				g.SelFgColor = c.ColorGreen | c.AttrBold
+				loadRssReaders()
+				rrList.Focus(g)
+
+				return nil
+			})
 		}
-		g.Execute(func(g *c.Gui) error {
-			feed, err := CheckUrl(url)
-			if err != nil {
-				v.Title = "Invalid URL, try again - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed | c.AttrBold
-				return nil
-			}
-
-			_, err = tdb.GetRssReaderByUrl(url)
-			if _, ok := err.(db.NotFound); !ok {
-				v.Title = "RSS Reader already exists - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed | c.AttrBold
-				return nil
-			}
-
-			rr := db.RssReader{Name: feed.Title, Url: url}
-			if err := tdb.AddRssReader(rr); err != nil {
-				return err
-			}
+		if isSearchPrompt(v) {
+			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
+			newsList.Clear()
+			newsList.Focus(g)
+			newsList.Title = " Searching ... "
 			deletePromptView(g)
-			g.SelFgColor = c.ColorGreen | c.AttrBold
-			loadRssReaders()
-			rrList.Focus(g)
+			g.Execute(func(g *c.Gui) error {
+				readers, err := tdb.GetRssReaders()
+				if err != nil {
+					return err
+				}
+				var allEvents []db.Event
+				for _, reader := range readers {
+					events, err := DownloadEvents(reader.Url)
+					if err != nil {
+						continue
+					}
+					for _, e := range events {
+						if termsInEvent(terms, e) {
+							allEvents = append(allEvents, e)
+						}
+					}
+				}
+				updateNews(g, allEvents, "searching")
 
-			return nil
-		})
+				return nil
+			})
+		}
 	}
 
 	return nil
@@ -263,7 +316,15 @@ func removePrompt(g *c.Gui, v *c.View) error {
 }
 
 func addRssReader(g *c.Gui, v *c.View) error {
-	if err := createPromptView(g, "Give a new RSS reader URL: (Ctrl-q to cancel)"); err != nil {
+	if err := createPromptView(g, "Give a new RSS reader URL:"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func search(g *c.Gui, v *c.View) error {
+	if err := createPromptView(g, "Search with multiple terms:"); err != nil {
 		return err
 	}
 
