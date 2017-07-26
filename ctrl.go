@@ -122,13 +122,16 @@ func isFindPrompt(v *c.View) bool {
 	return strings.Contains(v.Title, "Search ")
 }
 
-func termsInEvent(terms []string, e db.Event) bool {
-	for _, t := range terms {
-		if strings.Contains(e.Title, t) || strings.Contains(e.Summary, t) {
-			return true
+func eventSatisfiesSearch(terms []string, e db.Event) bool {
+	for _, term := range terms {
+		tl := strings.ToLower(term)
+		title := strings.ToLower(e.Title)
+		summary := strings.ToLower(e.Summary)
+		if !strings.Contains(title, tl) && !strings.Contains(summary, tl) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func findEvents(terms []string) chan db.Event {
@@ -144,7 +147,7 @@ func findEvents(terms []string) chan db.Event {
 				continue
 			}
 			for _, e := range events {
-				if termsInEvent(terms, e) {
+				if eventSatisfiesSearch(terms, e) {
 					c <- e
 				}
 			}
