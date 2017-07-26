@@ -19,6 +19,7 @@ package db
 
 import (
 	"database/sql"
+	"os"
 	"os/user"
 	"path"
 
@@ -32,9 +33,18 @@ type TDB struct {
 func InitDB() (*TDB, error) {
 
 	usr, _ := user.Current()
-	dir := usr.HomeDir
-	dbpath := path.Join(dir, ".terminews/terminews.db")
+	dir := path.Join(usr.HomeDir, ".terminews")
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			if oserr := os.Mkdir(dir, 0700); oserr != nil {
+				return nil, oserr
+			}
+		} else {
+			return nil, err
+		}
+	}
 
+	dbpath := path.Join(dir, "terminews.db")
 	db, err := sql.Open("sqlite3", dbpath)
 	if err != nil || db == nil {
 		return nil, err

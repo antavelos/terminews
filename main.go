@@ -111,7 +111,7 @@ func main() {
 
 	// Init DB
 	if tdb, err = db.InitDB(); err != nil {
-		tdb.Close()
+		// tdb.Close()
 		log.Fatal(err)
 	}
 	defer tdb.Close()
