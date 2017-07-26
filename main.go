@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"sync"
 
 	"github.com/antavelos/terminews/db"
 	"github.com/fatih/color"
@@ -26,6 +27,7 @@ var (
 	curW     int
 	curH     int
 	Bold     *color.Color
+	wg       sync.WaitGroup
 )
 
 func handleFatalError(msg string, err error) {
@@ -66,7 +68,7 @@ func layout(g *c.Gui) error {
 	updateSummary()
 
 	if _, err = g.View(PROMPT_VIEW); err == nil {
-		_, err = g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+		_, err = g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
 		if err != nil && err != c.ErrUnknownView {
 			return err
 		}
@@ -140,6 +142,8 @@ func main() {
 	loadRssReaders()
 	rrList.Focus(g)
 
+	g.SetRune(curW/2, curH/2, rune('a'), c.ColorDefault|c.AttrBold, c.ColorDefault)
+
 	addKeybinding(g, "", c.KeyCtrlN, c.ModNone, addRssReader)
 	addKeybinding(g, "", c.KeyDelete, c.ModNone, deleteEntry)
 	addKeybinding(g, NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark)
@@ -152,6 +156,7 @@ func main() {
 	addKeybinding(g, "", c.KeyPgdn, c.ModNone, listPgDown)
 	addKeybinding(g, "", c.KeyEnter, c.ModNone, onEnter)
 	addKeybinding(g, PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt)
+	addKeybinding(g, "", c.KeyCtrlF, c.ModNone, find)
 
 	err = g.MainLoop()
 	log.Println("terminews exited unexpectedly: ", err)

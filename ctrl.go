@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	_ "time"
 
 	"github.com/antavelos/terminews/db"
 	c "github.com/jroimartin/gocui"
@@ -68,12 +69,13 @@ func loadRssReaders() []db.RssReader {
 
 func createPromptView(g *c.Gui, title string) error {
 	tw, th := g.Size()
-	v, err := g.SetView(PROMPT_VIEW, tw/4, (th/2)-1, (tw*3)/4, (th/2)+1)
+	v, err := g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
 	if err != nil && err != c.ErrUnknownView {
 		return err
 	}
 	v.Editable = true
-	v.Title = title
+	setPromptViewTitle(g, title)
+	// v.Title = title
 
 	g.Cursor = true
 	g.SetCurrentView(PROMPT_VIEW)
@@ -88,6 +90,51 @@ func deletePromptView(g *c.Gui) error {
 	g.Cursor = false
 
 	return nil
+}
+
+func setPromptViewTitle(g *c.Gui, title string) {
+	v, _ := g.View(PROMPT_VIEW)
+	v.Title = fmt.Sprintf("%v (Ctrl-q to cancel)", title)
+}
+
+func isNewRSSPrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "new RSS")
+}
+
+func isFindPrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "Search ")
+}
+
+func termsInEvent(terms []string, e db.Event) bool {
+	for _, t := range terms {
+		if strings.Contains(e.Title, t) || strings.Contains(e.Summary, t) {
+			return true
+		}
+	}
+	return false
+}
+
+func findEvents(terms []string) chan db.Event {
+	c := make(chan db.Event)
+	readers, _ := tdb.GetRssReaders()
+	// if err != nil {
+	// 	return err
+	// }
+	go func() {
+		for _, reader := range readers {
+			events, err := DownloadEvents(reader.Url)
+			if err != nil {
+				continue
+			}
+			for _, e := range events {
+				if termsInEvent(terms, e) {
+					c <- e
+				}
+			}
+		}
+		close(c)
+	}()
+	return c
 }
 
 // Key binding functions
@@ -113,8 +160,10 @@ func listUp(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MoveUp()
 	} else {
-		newsList.MoveUp()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MoveUp()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -124,8 +173,10 @@ func listDown(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MoveDown()
 	} else {
-		newsList.MoveDown()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MoveDown()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -135,8 +186,10 @@ func listPgDown(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MovePgDown()
 	} else {
-		newsList.MovePgDown()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MovePgDown()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -146,8 +199,10 @@ func listPgUp(g *c.Gui, v *c.View) error {
 	if v == rrList.View {
 		rrList.MovePgUp()
 	} else {
-		newsList.MovePgUp()
-		updateSummary()
+		if !newsList.IsEmpty() {
+			newsList.MovePgUp()
+			updateSummary()
+		}
 	}
 
 	return nil
@@ -173,36 +228,58 @@ func onEnter(g *c.Gui, v *c.View) error {
 			return nil
 		})
 	case PROMPT_VIEW:
-		url := strings.TrimSpace(v.ViewBuffer())
-		if len(url) == 0 {
-			return nil
+		if isNewRSSPrompt(v) {
+			url := strings.TrimSpace(v.ViewBuffer())
+			if len(url) == 0 {
+				return nil
+			}
+			g.Execute(func(g *c.Gui) error {
+				feed, err := CheckUrl(url)
+				if err != nil {
+					setPromptViewTitle(g, "Invalid URL, try again:")
+					g.SelFgColor = c.ColorRed | c.AttrBold
+					return nil
+				}
+
+				_, err = tdb.GetRssReaderByUrl(url)
+				if _, ok := err.(db.NotFound); !ok {
+					setPromptViewTitle(g, "RSS Reader already exists, try again:")
+					g.SelFgColor = c.ColorRed | c.AttrBold
+					return nil
+				}
+
+				rr := db.RssReader{Name: feed.Title, Url: url}
+				if err := tdb.AddRssReader(rr); err != nil {
+					return err
+				}
+				deletePromptView(g)
+				g.SelFgColor = c.ColorGreen | c.AttrBold
+				loadRssReaders()
+				rrList.Focus(g)
+
+				return nil
+			})
 		}
-		g.Execute(func(g *c.Gui) error {
-			feed, err := CheckUrl(url)
-			if err != nil {
-				v.Title = "Invalid URL, try again - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed | c.AttrBold
-				return nil
-			}
-
-			_, err = tdb.GetRssReaderByUrl(url)
-			if _, ok := err.(db.NotFound); !ok {
-				v.Title = "RSS Reader already exists - (Ctrl-q to cancel)"
-				g.SelFgColor = c.ColorRed | c.AttrBold
-				return nil
-			}
-
-			rr := db.RssReader{Name: feed.Title, Url: url}
-			if err := tdb.AddRssReader(rr); err != nil {
-				return err
-			}
+		if isFindPrompt(v) {
+			newsList.Reset()
+			newsList.Focus(g)
+			newsList.Title = " Searching ... "
 			deletePromptView(g)
-			g.SelFgColor = c.ColorGreen | c.AttrBold
-			loadRssReaders()
-			rrList.Focus(g)
-
-			return nil
-		})
+			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
+			g.Execute(func(g *c.Gui) error {
+				c := 0
+				for event := range findEvents(terms) {
+					newsList.AddItem(g, event)
+					c++
+				}
+				if c == 0 {
+					newsList.SetTitle("No events found")
+				} else {
+					newsList.SetTitle(fmt.Sprintf("%v events found", c))
+				}
+				return nil
+			})
+		}
 	}
 
 	return nil
@@ -263,7 +340,15 @@ func removePrompt(g *c.Gui, v *c.View) error {
 }
 
 func addRssReader(g *c.Gui, v *c.View) error {
-	if err := createPromptView(g, "Give a new RSS reader URL: (Ctrl-q to cancel)"); err != nil {
+	if err := createPromptView(g, "Give a new RSS reader URL:"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func find(g *c.Gui, v *c.View) error {
+	if err := createPromptView(g, "Search with multiple terms:"); err != nil {
 		return err
 	}
 
