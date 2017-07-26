@@ -43,7 +43,7 @@ func updateSummary() {
 	summary.Clear()
 	fmt.Fprintf(summary, "\n\n %v %v\n", Bold.Sprint("By:"), event.Author)
 	fmt.Fprintf(summary, " %v %v\n", Bold.Sprint("Published on:"), event.Published)
-	fmt.Fprintf(summary, " %v %v\n\n", Bold.Sprint("Site:"), event.Url)
+	fmt.Fprintf(summary, " %v %v\n\n", Bold.Sprint("URL:"), event.Url)
 	fmt.Fprintf(summary, " %v", event.Summary)
 }
 
