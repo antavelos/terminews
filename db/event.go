@@ -49,7 +49,7 @@ func GetEventSql() string {
 func (tdb *TDB) GetEvents() ([]Event, error) {
 	sql_readall := `
     SELECT Id, Title, Author, Url, Summary, Published FROM event
-    ORDER BY id ASC
+    ORDER BY id DESC
     `
 
 	rows, err := tdb.Query(sql_readall)
