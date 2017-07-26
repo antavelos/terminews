@@ -77,7 +77,11 @@ func (l *List) SetTitle(title string) {
 	if l.IsEmpty() {
 		currPageNum = 0
 	}
-	l.Title = fmt.Sprintf(" %d/%d - %v ", currPageNum, l.pagesNum(), title)
+	if l.pagesNum() > 1 {
+		l.Title = fmt.Sprintf(" %d/%d - %v ", currPageNum, l.pagesNum(), title)
+	} else {
+		l.Title = fmt.Sprintf(" %v ", title)
+	}
 }
 
 func (l *List) SetItems(data []interface{}) error {

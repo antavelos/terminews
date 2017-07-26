@@ -45,7 +45,7 @@ func DownloadEvents(url string) ([]db.Event, error) {
 		if item.Author != nil {
 			e.Author = item.Author.Name
 		} else {
-			e.Author = "Unknown"
+			e.Author = "Unknown author"
 		}
 		e.Url = item.Link
 		e.Summary = trimHtml(item.Description)

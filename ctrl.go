@@ -60,7 +60,7 @@ func updateNews(g *c.Gui, events []db.Event, from string) {
 	if err := newsList.SetItems(data); err != nil {
 		fmt.Errorf("Failed to update news list: %v", err)
 	}
-	newsList.SetTitle(fmt.Sprintf("News from %v", from))
+	newsList.SetTitle(fmt.Sprintf("News from: %v", from))
 	newsList.Focus(g)
 	newsList.ResetCursor()
 	updateSummary()
@@ -237,7 +237,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 		g.Execute(func(g *c.Gui) error {
 			events, err := DownloadEvents(site.Url)
 			if err != nil {
-				newsList.Title = fmt.Sprintf(" Failed to load news from %v ", site.Name)
+				newsList.Title = fmt.Sprintf(" Failed to load news from: %v ", site.Name)
 				newsList.Clear()
 			} else {
 				updateNews(g, events, site.Name)
@@ -292,7 +292,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 				if c == 0 {
 					newsList.SetTitle("No events found")
 				} else {
-					newsList.SetTitle(fmt.Sprintf("%v events found", c))
+					newsList.SetTitle(fmt.Sprintf("%v event(s) found", c))
 				}
 				return nil
 			})
@@ -318,7 +318,7 @@ func loadBookmarks(g *c.Gui, v *c.View) error {
 	events, err := tdb.GetEvents()
 	source := "My bookmarks"
 	if err != nil {
-		newsList.Title = fmt.Sprintf(" Failed to load news from %v ", source)
+		newsList.Title = fmt.Sprintf(" Failed to load news from: %v ", source)
 		newsList.Clear()
 	} else {
 		updateNews(g, events, source)
