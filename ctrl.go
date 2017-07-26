@@ -49,6 +49,7 @@ func updateSummary() {
 
 func updateNews(g *c.Gui, events []db.Event, from string) {
 	if len(events) == 0 {
+		newsList.Reset()
 		newsList.SetTitle(fmt.Sprintf("No news in %v", from))
 		summary.Clear()
 		return
@@ -73,7 +74,7 @@ func loadSites() {
 		fmt.Errorf("Failed to load sites: %v", err)
 	}
 	if len(sites) == 0 {
-		sitesList.SetTitle(fmt.Sprintf("No sites available"))
+		sitesList.SetTitle(fmt.Sprintf("No sites yes... (Ctrl-n to add)"))
 		sitesList.Reset()
 		newsList.Reset()
 		newsList.SetTitle("No news yet...")

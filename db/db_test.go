@@ -18,9 +18,11 @@
 package db
 
 import (
-	_ "github.com/mattn/go-sqlite3"
+	"database/sql"
 	"os"
 	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const dbpath = "test.db"
@@ -28,7 +30,11 @@ const dbpath = "test.db"
 var tdb *TDB
 
 func SetUp() {
-	tdb, _ = InitDB(dbpath)
+	db, err := sql.Open("sqlite3", dbpath)
+	if err != nil || db == nil {
+		panic("DB failed to be initialized.")
+	}
+	tdb = &TDB{db}
 	tdb.CreateTables()
 }
 

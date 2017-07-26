@@ -110,7 +110,7 @@ func main() {
 	Lists = make(map[string]*List)
 
 	// Init DB
-	if tdb, err = db.InitDB("./term.db"); err != nil {
+	if tdb, err = db.InitDB(); err != nil {
 		tdb.Close()
 		log.Fatal(err)
 	}

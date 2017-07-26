@@ -67,6 +67,7 @@ func (l *List) Unfocus() {
 
 func (l *List) Reset() {
 	l.items = make([]interface{}, 0)
+	l.pages = []Page{}
 	l.Clear()
 	l.ResetCursor()
 }
