@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	_ "time"
 
 	"github.com/antavelos/terminews/db"
 	c "github.com/jroimartin/gocui"
@@ -100,8 +101,8 @@ func isNewRSSPrompt(v *c.View) bool {
 	return strings.Contains(v.Title, "new RSS")
 }
 
-func isSearchPrompt(v *c.View) bool {
-	return strings.Contains(v.Title, "Search")
+func isFindPrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "Search ")
 }
 
 func termsInEvent(terms []string, e db.Event) bool {
@@ -111,6 +112,29 @@ func termsInEvent(terms []string, e db.Event) bool {
 		}
 	}
 	return false
+}
+
+func findEvents(terms []string) chan db.Event {
+	c := make(chan db.Event)
+	readers, _ := tdb.GetRssReaders()
+	// if err != nil {
+	// 	return err
+	// }
+	go func() {
+		for _, reader := range readers {
+			events, err := DownloadEvents(reader.Url)
+			if err != nil {
+				continue
+			}
+			for _, e := range events {
+				if termsInEvent(terms, e) {
+					c <- e
+				}
+			}
+		}
+		close(c)
+	}()
+	return c
 }
 
 // Key binding functions
@@ -236,31 +260,23 @@ func onEnter(g *c.Gui, v *c.View) error {
 				return nil
 			})
 		}
-		if isSearchPrompt(v) {
-			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
-			newsList.Clear()
+		if isFindPrompt(v) {
+			newsList.Reset()
 			newsList.Focus(g)
 			newsList.Title = " Searching ... "
 			deletePromptView(g)
+			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
 			g.Execute(func(g *c.Gui) error {
-				readers, err := tdb.GetRssReaders()
-				if err != nil {
-					return err
+				c := 0
+				for event := range findEvents(terms) {
+					newsList.AddItem(g, event)
+					c++
 				}
-				var allEvents []db.Event
-				for _, reader := range readers {
-					events, err := DownloadEvents(reader.Url)
-					if err != nil {
-						continue
-					}
-					for _, e := range events {
-						if termsInEvent(terms, e) {
-							allEvents = append(allEvents, e)
-						}
-					}
+				if c == 0 {
+					newsList.SetTitle("No events found")
+				} else {
+					newsList.SetTitle(fmt.Sprintf("%v events found", c))
 				}
-				updateNews(g, allEvents, "searching")
-
 				return nil
 			})
 		}
@@ -331,7 +347,7 @@ func addRssReader(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func search(g *c.Gui, v *c.View) error {
+func find(g *c.Gui, v *c.View) error {
 	if err := createPromptView(g, "Search with multiple terms:"); err != nil {
 		return err
 	}

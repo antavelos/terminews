@@ -11,11 +11,8 @@ import (
 
 func CheckUrl(url string) (*gofeed.Feed, error) {
 	fp := gofeed.NewParser()
+
 	return fp.ParseURL(url)
-	// if err != nil {
-	// 	return nil, false
-	// }
-	// return feed, true
 }
 
 func DownloadEvents(url string) ([]db.Event, error) {

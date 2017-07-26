@@ -29,8 +29,12 @@ func CreateList(v *c.View) *List {
 	return list
 }
 
+func (l *List) Pages() []Page {
+	return l.pages
+}
+
 func (l *List) IsEmpty() bool {
-	return l.length() == 0
+	return l.Length() == 0
 }
 
 func (l *List) Focus(g *c.Gui) error {
@@ -42,6 +46,12 @@ func (l *List) Focus(g *c.Gui) error {
 
 func (l *List) Unfocus() {
 	l.Highlight = false
+}
+
+func (l *List) Reset() {
+	l.items = make([]interface{}, 0)
+	l.Clear()
+	l.ResetCursor()
 }
 
 func (l *List) SetTitle(title string) {
@@ -58,16 +68,21 @@ func (l *List) SetItems(data []interface{}) error {
 	return l.Draw()
 }
 
+func (l *List) AddItem(g *c.Gui, item interface{}) error {
+	l.items = append(l.items, item)
+	return l.Draw()
+}
+
 func (l *List) Draw() error {
 	if l.IsEmpty() {
 		return nil
 	}
 	l.currPageIdx = 0
 	l.pages = []Page{}
-	for offset := 0; offset < l.length(); offset += l.height() {
+	for offset := 0; offset < l.Length(); offset += l.height() {
 		limit := l.height()
-		if offset+limit > l.length() {
-			limit = l.length() % l.height()
+		if offset+limit > l.Length() {
+			limit = l.Length() % l.height()
 		}
 		l.pages = append(l.pages, Page{offset, limit})
 	}
@@ -142,7 +157,7 @@ func (l *List) width() int {
 	return x - 1
 }
 
-func (l *List) length() int {
+func (l *List) Length() int {
 	return len(l.items)
 }
 
