@@ -125,11 +125,13 @@ func TestEvent(t *testing.T) {
 		t.Errorf("Found %v Event records %v, want %v",
 			len(result), len(items))
 	}
-	for i, res := range result {
-		if res.Title != items[i].Title {
-			t.Errorf("Event record %v has title %v, want %v",
-				res.Id, res.Title, items[i].Title)
-		}
+	if result[1].Title != items[0].Title {
+		t.Errorf("Event record %v has title %v, want %v",
+			result[1].Id, result[1].Title, items[0].Title)
+	}
+	if result[0].Title != items[1].Title {
+		t.Errorf("Event record %v has title %v, want %v",
+			result[0].Id, result[0].Title, items[1].Title)
 	}
 
 	record, _ := tdb.GetEventById(1)

@@ -19,8 +19,6 @@ package db
 
 import (
 	"database/sql"
-	"os"
-	"os/user"
 	"path"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -30,21 +28,9 @@ type TDB struct {
 	*sql.DB
 }
 
-func InitDB() (*TDB, error) {
+func InitDB(appDir string) (*TDB, error) {
 
-	usr, _ := user.Current()
-	dir := path.Join(usr.HomeDir, ".terminews")
-	if _, err := os.Stat(dir); err != nil {
-		if os.IsNotExist(err) {
-			if oserr := os.Mkdir(dir, 0700); oserr != nil {
-				return nil, oserr
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	dbpath := path.Join(dir, "terminews.db")
+	dbpath := path.Join(appDir, "terminews.db")
 	db, err := sql.Open("sqlite3", dbpath)
 	if err != nil || db == nil {
 		return nil, err

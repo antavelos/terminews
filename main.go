@@ -18,7 +18,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"os/user"
+	"path"
 	"sync"
 
 	"github.com/antavelos/terminews/db"
@@ -34,10 +38,8 @@ const (
 )
 
 var (
-	Lists map[string]*List
-	tdb   *db.TDB
-	// g        *c.Gui
-	// err      error
+	Lists     map[string]*List
+	tdb       *db.TDB
 	sitesList *List
 	newsList  *List
 	summary   *c.View
@@ -46,12 +48,6 @@ var (
 	Bold      *color.Color
 	wg        sync.WaitGroup
 )
-
-func handleFatalError(msg string, err error) {
-	// tdb.Close()
-	// g.Close()
-	log.Fatal(msg, err)
-}
 
 func relSize(g *c.Gui) (int, int) {
 	tw, th := g.Size()
@@ -70,17 +66,17 @@ func layout(g *c.Gui) error {
 
 	_, err := g.SetView(SITES_VIEW, 0, 0, rw, th-1)
 	if err != nil {
-		handleFatalError("Cannot update sites view", err)
+		log.Fatal("Cannot update sites view", err)
 	}
 
 	_, err = g.SetView(NEWS_VIEW, rw+1, 0, tw-1, rh)
 	if err != nil {
-		handleFatalError("Cannot update news view", err)
+		log.Fatal("Cannot update news view", err)
 	}
 
 	_, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, tw-1, th-1)
 	if err != nil {
-		handleFatalError("Cannot update summary view.", err)
+		log.Fatal("Cannot update summary view.", err)
 	}
 	updateSummary()
 
@@ -101,6 +97,21 @@ func layout(g *c.Gui) error {
 	return nil
 }
 
+func getAppDir() (string, error) {
+	usr, _ := user.Current()
+	dir := path.Join(usr.HomeDir, ".terminews")
+	if _, err := os.Stat(dir); err != nil {
+		if os.IsNotExist(err) {
+			if oserr := os.Mkdir(dir, 0700); oserr != nil {
+				return "", oserr
+			}
+		} else {
+			return "", err
+		}
+	}
+	return dir, nil
+}
+
 func main() {
 
 	var v *c.View
@@ -109,8 +120,22 @@ func main() {
 	Bold = color.New(color.Bold)
 	Lists = make(map[string]*List)
 
+	appDir, err := getAppDir()
+	if err != nil {
+		panic("Could not set up app directory.")
+	}
+
+	//setup logginh
+	logfile := path.Join(appDir, ".terminews.log")
+	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("Failed to initialize logfile")
+	}
+	defer f.Close()
+	log.SetOutput(f)
+
 	// Init DB
-	if tdb, err = db.InitDB(); err != nil {
+	if tdb, err = db.InitDB(appDir); err != nil {
 		// tdb.Close()
 		log.Fatal(err)
 	}
@@ -119,7 +144,7 @@ func main() {
 	// Create a new GUI.
 	g, err := c.NewGui(c.OutputNormal)
 	if err != nil {
-		handleFatalError("Failed to initialize GUI", err)
+		log.Fatal("Failed to initialize GUI", err)
 	}
 	defer g.Close()
 
@@ -135,7 +160,7 @@ func main() {
 	// Sites List
 	v, err = g.SetView(SITES_VIEW, 0, 0, rw, curH-1)
 	if err != nil && err != c.ErrUnknownView {
-		handleFatalError("Failed to create sites list:", err)
+		log.Fatal("Failed to create sites list:", err)
 
 	}
 	sitesList = CreateList(v)
@@ -143,7 +168,7 @@ func main() {
 	//
 	v, err = g.SetView(NEWS_VIEW, rw+1, 0, curW-1, rh)
 	if err != nil && err != c.ErrUnknownView {
-		handleFatalError(" Failed to create news list:", err)
+		log.Fatal(" Failed to create news list:", err)
 	}
 	newsList = CreateList(v)
 	newsList.SetTitle("No news yet...")
@@ -151,7 +176,7 @@ func main() {
 	// Summary view
 	summary, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, curW-1, curH-1)
 	if err != nil && err != c.ErrUnknownView {
-		handleFatalError("Failed to create summary view:", err)
+		log.Fatal("Failed to create summary view:", err)
 	}
 	summary.Title = " Summary "
 	summary.Wrap = true
