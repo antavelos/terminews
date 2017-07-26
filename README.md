@@ -1,18 +1,16 @@
 # terminews [![Build Status](https://travis-ci.org/antavelos/terminews.svg?branch=master)](https://travis-ci.org/antavelos/terminews)
 
-**terminews** is a terminal application using the [GOCUI](https://github.com/jroimartin/gocui) library that allows you to manage RSS resources and display their news feed.
+**terminews** is a terminal based application (TUI) which makes use of the [gocui](https://github.com/jroimartin/gocui) and [gofeed](https://github.com/mmcdole/gofeed) libraries and allows you to manage RSS resources and display their news feed. Currently it is only compatible with _Linux_ environments.
 
 
 ## Installation
 
 ### Dependencies
 
-* [Go](https://golang.org/)
-	Since proper executables are not available yet you need to have go installed in order to compile and run it.
 * [Sqlite3](https://www.sqlite.org/)
-	For storing RSS readers' data and bookmarking news.
+	For storing site' data and bookmarking news.
 
-### Steps
+### From source code
 
     go get github.com/antavelos/terminews
 	cd $GOPATH/src/github.com/antavelos/terminews
@@ -24,8 +22,8 @@
 
 ### Layout
 The terminal is split in 3 different areas:
-1. **RSS Readers list** which contains the list of the user's saved RSS readers.
-2. **News list** which contains the news feed (list of news' titles) of the currently selected RSS reader.
+1. **Sites list** which contains the list of the user's saved sites.
+2. **News list** which contains the news feed (list of news' titles) of the currently selected site.
 3. **Summary** which contains extra information of the currently selected event.
 
 For both lists the items are displayed paged.
@@ -33,11 +31,13 @@ For both lists the items are displayed paged.
 ### Key bindings
  Key combination | Description
 ---|---
-<kbd>Tab</kbd>|Focuses between the RSS Readers list and the News list alternately
-<kbd>Enter</kbd>|Retrieves the news feed of the currently selected RSS reader
+<kbd>Tab</kbd>|Focuses between the Sites list and the News list alternately
+<kbd>Enter</kbd>|Retrieves the news feed of the currently selected site or submits user input
+<kbd>Ctrl</kbd><kbd>n</kbd>|Prompts the user to add a new site (URL)
+<kbd>Ctrl</kbd><kbd>f</kbd>|Prompts the user to search among the existing sites. Multiple terms are allowed and they are used conjunctively
 <kbd>Ctrl</kbd><kbd>b</kbd>|Adds the currently selected event in the bookmarks list
 <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>b</kbd>|Displays the bookmarked events
-<kbd>Del</kbd>|Deletes the selected RSS reader of the selected bookmarked event depending on which list is currently focused
+<kbd>Del</kbd>|Deletes the selected site of the selected bookmarked event depending on which list is currently focused
 <kbd>&uarr;</kbd>|Moves to the previous list item circularly
 <kbd>&darr;</kbd>|Moves to the next list item circularly
 <kbd>PgUp</kbd>|Moves to the previous list page circularly
