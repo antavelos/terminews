@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/antavelos/terminews/db"
 	"github.com/mmcdole/gofeed"
@@ -48,7 +49,11 @@ func DownloadEvents(url string) ([]db.Event, error) {
 			e.Author = "Unknown author"
 		}
 		e.Url = item.Link
-		e.Summary = trimHtml(item.Description)
+		if len(item.Description) > 0 {
+			e.Summary = trim(item.Description)
+		} else {
+			e.Summary = "No summary available"
+		}
 		e.Published = item.Published
 
 		events = append(events, e)
@@ -57,8 +62,14 @@ func DownloadEvents(url string) ([]db.Event, error) {
 	return events, nil
 }
 
-func trimHtml(desc string) string {
+func trim(desc string) string {
 	var re = regexp.MustCompile(`(<.*?>)`)
 
-	return re.ReplaceAllString(desc, ``)
+	// remove html
+	desc = re.ReplaceAllString(desc, ``)
+
+	// remove spaces
+	desc = strings.TrimSpace(desc)
+
+	return desc
 }

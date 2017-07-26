@@ -20,6 +20,8 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -133,4 +135,12 @@ func (tdb *TDB) DeleteEvent(id int) error {
 
 func (e Event) String() string {
 	return string(e.Title)
+}
+
+func (e Event) Host() string {
+	u, err := url.Parse(e.Url)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
 }

@@ -41,8 +41,9 @@ func updateSummary() {
 	event := currItem.(db.Event)
 
 	summary.Clear()
-	fmt.Fprintf(summary, "\n\n %v %v\n", Bold.Sprint("By"), event.Author)
-	fmt.Fprintf(summary, " %v %v\n\n", Bold.Sprint("Published on"), event.Published)
+	fmt.Fprintf(summary, "\n\n %v %v\n", Bold.Sprint("By:"), event.Author)
+	fmt.Fprintf(summary, " %v %v\n", Bold.Sprint("Published on:"), event.Published)
+	fmt.Fprintf(summary, " %v %v\n\n", Bold.Sprint("Site:"), event.Host())
 	fmt.Fprintf(summary, " %v", event.Summary)
 }
 
@@ -66,10 +67,17 @@ func updateNews(g *c.Gui, events []db.Event, from string) {
 	updateSummary()
 }
 
-func loadSites() []db.Site {
+func loadSites() {
 	sites, err := tdb.GetSites()
 	if err != nil {
 		fmt.Errorf("Failed to load sites: %v", err)
+	}
+	if len(sites) == 0 {
+		sitesList.SetTitle(fmt.Sprintf("No sites available"))
+		sitesList.Reset()
+		newsList.Reset()
+		newsList.SetTitle("No news yet...")
+		return
 	}
 	data := make([]interface{}, len(sites))
 	for i, rr := range sites {
@@ -81,7 +89,6 @@ func loadSites() []db.Site {
 	}
 
 	sitesList.SetTitle("Sites")
-	return sites
 }
 
 func createPromptView(g *c.Gui, title string) error {
@@ -115,7 +122,7 @@ func setPromptViewTitle(g *c.Gui, title string) {
 }
 
 func isNewSitePrompt(v *c.View) bool {
-	return strings.Contains(v.Title, "new Site")
+	return strings.Contains(v.Title, "New site") || strings.Contains(v.Title, "try again")
 }
 
 func isFindPrompt(v *c.View) bool {
@@ -136,10 +143,10 @@ func eventSatisfiesSearch(terms []string, e db.Event) bool {
 
 func findEvents(terms []string) chan db.Event {
 	c := make(chan db.Event)
-	sites, _ := tdb.GetSites()
-	// if err != nil {
-	// 	return err
-	// }
+	sites, err := tdb.GetSites()
+	if err != nil {
+		close(c)
+	}
 	go func() {
 		for _, site := range sites {
 			events, err := DownloadEvents(site.Url)
@@ -159,8 +166,6 @@ func findEvents(terms []string) chan db.Event {
 
 // Key binding functions
 
-// `quit` is a handler that gets bound to Ctrl-C.
-// It signals the main loop to exit.
 func quit(g *c.Gui, v *c.View) error {
 	return c.ErrQuit
 }
@@ -234,6 +239,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 		currItem := sitesList.CurrentItem()
 		site := currItem.(db.Site)
 
+		summary.Clear()
 		newsList.Clear()
 		newsList.Focus(g)
 		newsList.Title = " Downloading ... "

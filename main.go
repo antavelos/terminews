@@ -145,8 +145,8 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		handleFatalError(" Failed to create news list:", err)
 	}
-	v.Title = " No news yet ... "
 	newsList = CreateList(v)
+	newsList.SetTitle("No news yet...")
 
 	// Summary view
 	summary, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, curW-1, curH-1)
