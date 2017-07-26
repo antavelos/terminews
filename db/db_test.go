@@ -46,48 +46,48 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func TestRssReader(t *testing.T) {
+func TestSite(t *testing.T) {
 
-	items := []RssReader{
-		RssReader{Name: "CNN", Url: "www.cnn.com"},
-		RssReader{Name: "BBC", Url: "www.bbc.com"},
+	items := []Site{
+		Site{Name: "CNN", Url: "www.cnn.com"},
+		Site{Name: "BBC", Url: "www.bbc.com"},
 	}
 	for _, item := range items {
-		tdb.AddRssReader(item)
+		tdb.AddSite(item)
 	}
 
-	result, _ := tdb.GetRssReaders()
+	result, _ := tdb.GetSites()
 	t.Log(result)
 	if len(result) != 2 {
-		t.Errorf("Found %v RssReader records %v, want %v",
+		t.Errorf("Found %v Site records %v, want %v",
 			len(result), len(items))
 	}
 	for i, res := range result {
 		if res.Name != items[i].Name {
-			t.Errorf("RssReader record %v has name %v, want %v",
+			t.Errorf("Site record %v has name %v, want %v",
 				res.Id, res.Name, items[i].Name)
 		}
 	}
 
-	record, _ := tdb.GetRssReaderById(1)
+	record, _ := tdb.GetSiteById(1)
 	t.Log(record)
 	if record.Name != items[0].Name {
-		t.Errorf("RssReader record %v has name %v, want %v",
+		t.Errorf("Site record %v has name %v, want %v",
 			record.Id, record.Name, items[0].Name)
 	}
 
-	_, err := tdb.GetRssReaderById(12345)
+	_, err := tdb.GetSiteById(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	err = tdb.DeleteRssReader(12345)
+	err = tdb.DeleteSite(12345)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}
 
-	tdb.DeleteRssReader(1)
-	_, err = tdb.GetRssReaderById(1)
+	tdb.DeleteSite(1)
+	_, err = tdb.GetSiteById(1)
 	if _, ok := err.(NotFound); !ok {
 		t.Errorf("Expected NotFound error for id 12345")
 	}

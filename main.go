@@ -27,10 +27,10 @@ import (
 )
 
 const (
-	RSS_READERS_VIEW = "rssreaders"
-	NEWS_VIEW        = "news"
-	SUMMARY_VIEW     = "summary"
-	PROMPT_VIEW      = "prompt"
+	SITES_VIEW   = "rssreaders"
+	NEWS_VIEW    = "news"
+	SUMMARY_VIEW = "summary"
+	PROMPT_VIEW  = "prompt"
 )
 
 var (
@@ -38,13 +38,13 @@ var (
 	tdb   *db.TDB
 	// g        *c.Gui
 	// err      error
-	rrList   *List
-	newsList *List
-	summary  *c.View
-	curW     int
-	curH     int
-	Bold     *color.Color
-	wg       sync.WaitGroup
+	sitesList *List
+	newsList  *List
+	summary   *c.View
+	curW      int
+	curH      int
+	Bold      *color.Color
+	wg        sync.WaitGroup
 )
 
 func handleFatalError(msg string, err error) {
@@ -68,9 +68,9 @@ func layout(g *c.Gui) error {
 	// Get the relative size of the views
 	rw, rh := relSize(g)
 
-	_, err := g.SetView(RSS_READERS_VIEW, 0, 0, rw, th-1)
+	_, err := g.SetView(SITES_VIEW, 0, 0, rw, th-1)
 	if err != nil {
-		handleFatalError("Cannot update rsslist view", err)
+		handleFatalError("Cannot update sites view", err)
 	}
 
 	_, err = g.SetView(NEWS_VIEW, rw+1, 0, tw-1, rh)
@@ -92,7 +92,7 @@ func layout(g *c.Gui) error {
 	}
 
 	if curW != tw || curH != th {
-		rrList.Draw()
+		sitesList.Draw()
 		newsList.Draw()
 		curW = tw
 		curH = th
@@ -132,13 +132,13 @@ func main() {
 	curW, curH = g.Size()
 	rw, rh := relSize(g)
 
-	// RSS Readers List
-	v, err = g.SetView(RSS_READERS_VIEW, 0, 0, rw, curH-1)
+	// Sites List
+	v, err = g.SetView(SITES_VIEW, 0, 0, rw, curH-1)
 	if err != nil && err != c.ErrUnknownView {
-		handleFatalError("Failed to create rssreaders list:", err)
+		handleFatalError("Failed to create sites list:", err)
 
 	}
-	rrList = CreateList(v)
+	sitesList = CreateList(v)
 
 	//
 	v, err = g.SetView(NEWS_VIEW, rw+1, 0, curW-1, rh)
@@ -156,12 +156,12 @@ func main() {
 	summary.Title = " Summary "
 	summary.Wrap = true
 
-	loadRssReaders()
-	rrList.Focus(g)
+	loadSites()
+	sitesList.Focus(g)
 
 	g.SetRune(curW/2, curH/2, rune('a'), c.ColorDefault|c.AttrBold, c.ColorDefault)
 
-	addKeybinding(g, "", c.KeyCtrlN, c.ModNone, addRssReader)
+	addKeybinding(g, "", c.KeyCtrlN, c.ModNone, addSite)
 	addKeybinding(g, "", c.KeyDelete, c.ModNone, deleteEntry)
 	addKeybinding(g, NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark)
 	addKeybinding(g, "", c.KeyCtrlC, c.ModNone, quit)

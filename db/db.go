@@ -42,7 +42,7 @@ func InitDB(filepath string) (*TDB, error) {
 
 func (tdb *TDB) CreateTables() error {
 	ssql := []string{
-		GetRssReaderSql(),
+		GetSiteSql(),
 		GetEventSql(),
 	}
 	for _, s := range ssql {
@@ -57,7 +57,7 @@ func (tdb *TDB) CreateTables() error {
 
 func (tdb *TDB) DropTables() error {
 	ssql := []string{
-		"DROP TABLE rssreader;",
+		"DROP TABLE site;",
 		"DROP TABLE event;",
 	}
 	for _, s := range ssql {

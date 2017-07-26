@@ -23,15 +23,15 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type RssReader struct {
+type Site struct {
 	Id   int
 	Name string
 	Url  string
 }
 
-func GetRssReaderSql() string {
+func GetSiteSql() string {
 	return `
-    CREATE TABLE IF NOT EXISTS rssreader(
+    CREATE TABLE IF NOT EXISTS site(
         Id INTEGER NOT NULL PRIMARY KEY ASC,
         Name TEXT,
         Url TEXT,
@@ -39,9 +39,9 @@ func GetRssReaderSql() string {
     );`
 }
 
-func (tdb *TDB) GetRssReaders() ([]RssReader, error) {
+func (tdb *TDB) GetSites() ([]Site, error) {
 	sql_readall := `
-    SELECT Id, Name, Url FROM rssreader
+    SELECT Id, Name, Url FROM site
     ORDER BY datetime(CreatedAt) ASC
     `
 
@@ -51,9 +51,9 @@ func (tdb *TDB) GetRssReaders() ([]RssReader, error) {
 		return nil, err
 	}
 
-	var records []RssReader
+	var records []Site
 	for rows.Next() {
-		rr := RssReader{}
+		rr := Site{}
 		if err := rows.Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
 			return nil, err
 		}
@@ -62,49 +62,49 @@ func (tdb *TDB) GetRssReaders() ([]RssReader, error) {
 	return records, nil
 }
 
-func (tdb *TDB) GetRssReaderById(id int) (RssReader, error) {
-	sql_readone := `SELECT Id, Name, Url FROM rssreader WHERE id = ?`
+func (tdb *TDB) GetSiteById(id int) (Site, error) {
+	sql_readone := `SELECT Id, Name, Url FROM site WHERE id = ?`
 
 	stmt, err := tdb.Prepare(sql_readone)
 	defer stmt.Close()
 	if err != nil {
-		return RssReader{}, err
+		return Site{}, err
 	}
 
-	var rr RssReader
+	var rr Site
 	if err = stmt.QueryRow(id).Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
 		if err == sql.ErrNoRows {
-			return RssReader{}, NotFound(fmt.Sprintf("RssReader not found for id: %v", id))
+			return Site{}, NotFound(fmt.Sprintf("Site not found for id: %v", id))
 		}
-		return RssReader{}, err
+		return Site{}, err
 	}
 
 	return rr, nil
 }
 
-func (tdb *TDB) GetRssReaderByUrl(url string) (RssReader, error) {
-	sql_readone := `SELECT Id, Name, Url FROM rssreader WHERE Url = ?`
+func (tdb *TDB) GetSiteByUrl(url string) (Site, error) {
+	sql_readone := `SELECT Id, Name, Url FROM site WHERE Url = ?`
 
 	stmt, err := tdb.Prepare(sql_readone)
 	defer stmt.Close()
 	if err != nil {
-		return RssReader{}, err
+		return Site{}, err
 	}
 
-	var rr RssReader
+	var rr Site
 	if err = stmt.QueryRow(url).Scan(&rr.Id, &rr.Name, &rr.Url); err != nil {
 		if err == sql.ErrNoRows {
-			return RssReader{}, NotFound(fmt.Sprintf("RssReader not found for url: %v", url))
+			return Site{}, NotFound(fmt.Sprintf("Site not found for url: %v", url))
 		}
-		return RssReader{}, err
+		return Site{}, err
 	}
 
 	return rr, nil
 }
 
-func (tdb *TDB) AddRssReader(rr RssReader) error {
+func (tdb *TDB) AddSite(rr Site) error {
 	sql_additem := `
-    INSERT OR REPLACE INTO rssreader(
+    INSERT OR REPLACE INTO site(
         Name,
         Url,
         CreatedAt
@@ -124,12 +124,12 @@ func (tdb *TDB) AddRssReader(rr RssReader) error {
 	return nil
 }
 
-func (tdb *TDB) DeleteRssReader(id int) error {
-	if _, err := tdb.GetRssReaderById(id); err != nil {
-		return NotFound(fmt.Sprintf("RssReader not found for id: %v", id))
+func (tdb *TDB) DeleteSite(id int) error {
+	if _, err := tdb.GetSiteById(id); err != nil {
+		return NotFound(fmt.Sprintf("Site not found for id: %v", id))
 	}
 
-	sql_delete := `DELETE FROM rssreader WHERE id = ?`
+	sql_delete := `DELETE FROM site WHERE id = ?`
 
 	stmt, err := tdb.Prepare(sql_delete)
 	defer stmt.Close()
@@ -144,6 +144,6 @@ func (tdb *TDB) DeleteRssReader(id int) error {
 	return nil
 }
 
-func (rr RssReader) String() string {
+func (rr Site) String() string {
 	return rr.Name
 }

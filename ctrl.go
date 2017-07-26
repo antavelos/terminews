@@ -66,22 +66,22 @@ func updateNews(g *c.Gui, events []db.Event, from string) {
 	updateSummary()
 }
 
-func loadRssReaders() []db.RssReader {
-	rssReaders, err := tdb.GetRssReaders()
+func loadSites() []db.Site {
+	sites, err := tdb.GetSites()
 	if err != nil {
-		fmt.Errorf("Failed to load RSS Readers: %v", err)
+		fmt.Errorf("Failed to load sites: %v", err)
 	}
-	data := make([]interface{}, len(rssReaders))
-	for i, rr := range rssReaders {
+	data := make([]interface{}, len(sites))
+	for i, rr := range sites {
 		data[i] = rr
 	}
 
-	if err := rrList.SetItems(data); err != nil {
-		fmt.Errorf("Failed to update rss readers list: %v", err)
+	if err := sitesList.SetItems(data); err != nil {
+		fmt.Errorf("Failed to update sites list: %v", err)
 	}
 
-	rrList.SetTitle("RSS Readers")
-	return rssReaders
+	sitesList.SetTitle("Sites")
+	return sites
 }
 
 func createPromptView(g *c.Gui, title string) error {
@@ -114,8 +114,8 @@ func setPromptViewTitle(g *c.Gui, title string) {
 	v.Title = fmt.Sprintf("%v (Ctrl-q to cancel)", title)
 }
 
-func isNewRSSPrompt(v *c.View) bool {
-	return strings.Contains(v.Title, "new RSS")
+func isNewSitePrompt(v *c.View) bool {
+	return strings.Contains(v.Title, "new Site")
 }
 
 func isFindPrompt(v *c.View) bool {
@@ -133,13 +133,13 @@ func termsInEvent(terms []string, e db.Event) bool {
 
 func findEvents(terms []string) chan db.Event {
 	c := make(chan db.Event)
-	readers, _ := tdb.GetRssReaders()
+	sites, _ := tdb.GetSites()
 	// if err != nil {
 	// 	return err
 	// }
 	go func() {
-		for _, reader := range readers {
-			events, err := DownloadEvents(reader.Url)
+		for _, site := range sites {
+			events, err := DownloadEvents(site.Url)
 			if err != nil {
 				continue
 			}
@@ -163,19 +163,19 @@ func quit(g *c.Gui, v *c.View) error {
 }
 
 func switchView(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
+	if v == sitesList.View {
 		newsList.Focus(g)
-		rrList.Unfocus()
+		sitesList.Unfocus()
 	} else {
-		rrList.Focus(g)
+		sitesList.Focus(g)
 		newsList.Unfocus()
 	}
 	return nil
 }
 
 func listUp(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
-		rrList.MoveUp()
+	if v == sitesList.View {
+		sitesList.MoveUp()
 	} else {
 		if !newsList.IsEmpty() {
 			newsList.MoveUp()
@@ -187,8 +187,8 @@ func listUp(g *c.Gui, v *c.View) error {
 }
 
 func listDown(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
-		rrList.MoveDown()
+	if v == sitesList.View {
+		sitesList.MoveDown()
 	} else {
 		if !newsList.IsEmpty() {
 			newsList.MoveDown()
@@ -200,8 +200,8 @@ func listDown(g *c.Gui, v *c.View) error {
 }
 
 func listPgDown(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
-		rrList.MovePgDown()
+	if v == sitesList.View {
+		sitesList.MovePgDown()
 	} else {
 		if !newsList.IsEmpty() {
 			newsList.MovePgDown()
@@ -213,8 +213,8 @@ func listPgDown(g *c.Gui, v *c.View) error {
 }
 
 func listPgUp(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
-		rrList.MovePgUp()
+	if v == sitesList.View {
+		sitesList.MovePgUp()
 	} else {
 		if !newsList.IsEmpty() {
 			newsList.MovePgUp()
@@ -227,25 +227,25 @@ func listPgUp(g *c.Gui, v *c.View) error {
 
 func onEnter(g *c.Gui, v *c.View) error {
 	switch v.Name() {
-	case RSS_READERS_VIEW:
-		currItem := rrList.CurrentItem()
-		rssReader := currItem.(db.RssReader)
+	case SITES_VIEW:
+		currItem := sitesList.CurrentItem()
+		site := currItem.(db.Site)
 
 		newsList.Clear()
 		newsList.Focus(g)
 		newsList.Title = " Downloading ... "
 		g.Execute(func(g *c.Gui) error {
-			events, err := DownloadEvents(rssReader.Url)
+			events, err := DownloadEvents(site.Url)
 			if err != nil {
-				newsList.Title = fmt.Sprintf(" Failed to load news from %v ", rssReader.Name)
+				newsList.Title = fmt.Sprintf(" Failed to load news from %v ", site.Name)
 				newsList.Clear()
 			} else {
-				updateNews(g, events, rssReader.Name)
+				updateNews(g, events, site.Name)
 			}
 			return nil
 		})
 	case PROMPT_VIEW:
-		if isNewRSSPrompt(v) {
+		if isNewSitePrompt(v) {
 			url := strings.TrimSpace(v.ViewBuffer())
 			if len(url) == 0 {
 				return nil
@@ -258,21 +258,21 @@ func onEnter(g *c.Gui, v *c.View) error {
 					return nil
 				}
 
-				_, err = tdb.GetRssReaderByUrl(url)
+				_, err = tdb.GetSiteByUrl(url)
 				if _, ok := err.(db.NotFound); !ok {
-					setPromptViewTitle(g, "RSS Reader already exists, try again:")
+					setPromptViewTitle(g, "Site already exists, try again:")
 					g.SelFgColor = c.ColorRed | c.AttrBold
 					return nil
 				}
 
-				rr := db.RssReader{Name: feed.Title, Url: url}
-				if err := tdb.AddRssReader(rr); err != nil {
+				rr := db.Site{Name: feed.Title, Url: url}
+				if err := tdb.AddSite(rr); err != nil {
 					return err
 				}
 				deletePromptView(g)
 				g.SelFgColor = c.ColorGreen | c.AttrBold
-				loadRssReaders()
-				rrList.Focus(g)
+				loadSites()
+				sitesList.Focus(g)
 
 				return nil
 			})
@@ -327,13 +327,13 @@ func loadBookmarks(g *c.Gui, v *c.View) error {
 }
 
 func deleteEntry(g *c.Gui, v *c.View) error {
-	if v == rrList.View {
-		currItem := rrList.CurrentItem()
-		rr := currItem.(db.RssReader)
-		if err := tdb.DeleteRssReader(rr.Id); err != nil {
+	if v == sitesList.View {
+		currItem := sitesList.CurrentItem()
+		rr := currItem.(db.Site)
+		if err := tdb.DeleteSite(rr.Id); err != nil {
 			return err
 		}
-		loadRssReaders()
+		loadSites()
 	} else {
 		if strings.Contains(newsList.Title, "My bookmarks") {
 			currItem := newsList.CurrentItem()
@@ -349,15 +349,15 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 
 func removePrompt(g *c.Gui, v *c.View) error {
 	if v.Name() == PROMPT_VIEW {
-		rrList.Focus(g)
+		sitesList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
 		return deletePromptView(g)
 	}
 	return nil
 }
 
-func addRssReader(g *c.Gui, v *c.View) error {
-	if err := createPromptView(g, "Give a new RSS reader URL:"); err != nil {
+func addSite(g *c.Gui, v *c.View) error {
+	if err := createPromptView(g, "New site URL:"); err != nil {
 		return err
 	}
 
