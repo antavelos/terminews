@@ -46,6 +46,6 @@ For both lists the items are displayed paged.
 
 
 ## TODO
-- [x] Add search functionality among the existing RSS readers.
+- [x] Add search functionality among the existing RSS feeds.
 - [ ] Add caching
 - [ ] Display full news content.
