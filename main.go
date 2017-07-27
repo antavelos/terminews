@@ -18,12 +18,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/user"
 	"path"
-	"sync"
 
 	"github.com/antavelos/terminews/db"
 	"github.com/fatih/color"
@@ -46,9 +44,10 @@ var (
 	curW      int
 	curH      int
 	Bold      *color.Color
-	wg        sync.WaitGroup
 )
 
+// relSize calculates the  sizes of the sites view width
+// and the news view height in relation to the current terminal size
 func relSize(g *c.Gui) (int, int) {
 	tw, th := g.Size()
 
@@ -97,12 +96,15 @@ func layout(g *c.Gui) error {
 	return nil
 }
 
+// getappDir creates if not exists the app directory where the sqlite db file
+// as well as the log file will be stored. In case of failure the current dir
+// will be used.
 func getAppDir() (string, error) {
 	usr, _ := user.Current()
 	dir := path.Join(usr.HomeDir, ".terminews")
 	if _, err := os.Stat(dir); err != nil {
 		if os.IsNotExist(err) {
-			if oserr := os.Mkdir(dir, 0700); oserr != nil {
+			if oserr := os.Mkdir(dir, 0666); oserr != nil {
 				return "", oserr
 			}
 		} else {
@@ -125,19 +127,18 @@ func main() {
 		panic("Could not set up app directory.")
 	}
 
-	//setup logginh
-	logfile := path.Join(appDir, ".terminews.log")
+	// Setup logging
+	logfile := path.Join(appDir, "terminews.log")
 	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		fmt.Println("Failed to initialize logfile")
+		log.Fatal("Failed to open logfile", err)
 	}
 	defer f.Close()
 	log.SetOutput(f)
 
 	// Init DB
 	if tdb, err = db.InitDB(appDir); err != nil {
-		// tdb.Close()
-		log.Fatal(err)
+		log.Fatal("Failed to initialize DB", err)
 	}
 	defer tdb.Close()
 
@@ -148,24 +149,40 @@ func main() {
 	}
 	defer g.Close()
 
+	// some basic configuration
 	g.SelFgColor = c.ColorGreen | c.AttrBold
 	g.BgColor = c.ColorDefault
 	g.Highlight = true
 
+	// setup the layout
 	g.SetManagerFunc(layout)
 
+	// the current actual size of the terminal
 	curW, curH = g.Size()
+
+	// rw is the relative width of the sites view
+	// rh is the relative height of the news view
 	rw, rh := relSize(g)
 
+	// Setup the initial layout
 	// Sites List
 	v, err = g.SetView(SITES_VIEW, 0, 0, rw, curH-1)
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal("Failed to create sites list:", err)
-
 	}
 	sitesList = CreateList(v)
+	sitesList.Focus(g)
 
-	//
+	// it loads the existing sites if any at the beginning
+	g.Execute(func(g *c.Gui) error {
+		if err := loadSites(); err != nil {
+			log.Fatal("Error while loading sites", err)
+		}
+		log.Print("Loaded initial sites")
+		return nil
+	})
+
+	// News list
 	v, err = g.SetView(NEWS_VIEW, rw+1, 0, curW-1, rh)
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal(" Failed to create news list:", err)
@@ -181,26 +198,51 @@ func main() {
 	summary.Title = " Summary "
 	summary.Wrap = true
 
-	loadSites()
-	sitesList.Focus(g)
+	// setup the keybindings of the app
+	if err = g.SetKeybinding("", c.KeyCtrlN, c.ModNone, addSite); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyDelete, c.ModNone, deleteEntry); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyCtrlC, c.ModNone, quit); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyCtrlB, c.ModAlt, loadBookmarks); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, listUp); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, listDown); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyPgup, c.ModNone, listPgUp); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, listPgDown); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyEnter, c.ModNone, onEnter); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding(PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
+	if err = g.SetKeybinding("", c.KeyCtrlF, c.ModNone, find); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
 
-	g.SetRune(curW/2, curH/2, rune('a'), c.ColorDefault|c.AttrBold, c.ColorDefault)
-
-	addKeybinding(g, "", c.KeyCtrlN, c.ModNone, addSite)
-	addKeybinding(g, "", c.KeyDelete, c.ModNone, deleteEntry)
-	addKeybinding(g, NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark)
-	addKeybinding(g, "", c.KeyCtrlC, c.ModNone, quit)
-	addKeybinding(g, "", c.KeyCtrlB, c.ModAlt, loadBookmarks)
-	addKeybinding(g, "", c.KeyTab, c.ModNone, switchView)
-	addKeybinding(g, "", c.KeyArrowUp, c.ModNone, listUp)
-	addKeybinding(g, "", c.KeyArrowDown, c.ModNone, listDown)
-	addKeybinding(g, "", c.KeyPgup, c.ModNone, listPgUp)
-	addKeybinding(g, "", c.KeyPgdn, c.ModNone, listPgDown)
-	addKeybinding(g, "", c.KeyEnter, c.ModNone, onEnter)
-	addKeybinding(g, PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt)
-	addKeybinding(g, "", c.KeyCtrlF, c.ModNone, find)
-
-	err = g.MainLoop()
-	log.Println("terminews exited unexpectedly: ", err)
+	// run the mainloop
+	if err = g.MainLoop(); err != nil && err != c.ErrQuit {
+		log.Println("terminews exited unexpectedly: ", err)
+	}
+	log.Println("Exiting\n")
 
 }
