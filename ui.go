@@ -36,16 +36,18 @@ type List struct {
 	items       []interface{}
 	pages       []Page
 	currPageIdx int
+	ordered     bool
 }
 
 // CreateList initializes a List object with an existing View by applying some
 // basic configuration
-func CreateList(v *c.View) *List {
+func CreateList(v *c.View, ordered bool) *List {
 	list := &List{}
 	list.View = v
 	list.SelBgColor = c.ColorBlack
 	list.SelFgColor = c.ColorWhite | c.AttrBold
 	list.Autoscroll = true
+	list.ordered = ordered
 
 	return list
 }
@@ -92,14 +94,14 @@ func (l *List) SetTitle(title string) {
 // the View
 func (l *List) SetItems(data []interface{}) error {
 	l.items = data
-	l.resetPages()
+	l.ResetPages()
 	return l.Draw()
 }
 
 // AddItem appends a given item to the existing list
 func (l *List) AddItem(g *c.Gui, item interface{}) error {
 	l.items = append(l.items, item)
-	l.resetPages()
+	l.ResetPages()
 	return l.Draw()
 }
 
@@ -179,9 +181,9 @@ func (l *List) ResetCursor() {
 	l.SetCursor(0, 0)
 }
 
-// resetPages (re)calculates the pages data based on the current length of the
+// ResetPages (re)calculates the pages data based on the current length of the
 // list and the current height of the View
-func (l *List) resetPages() {
+func (l *List) ResetPages() {
 	l.pages = []Page{}
 	for offset := 0; offset < l.length(); offset += l.height() {
 		limit := l.height()
@@ -255,7 +257,11 @@ func (l *List) prevPageIdx() int {
 func (l *List) displayItem(i int) string {
 	item := fmt.Sprint(l.items[i])
 	sp := spaces(l.width() - len(item) - 3)
-	return fmt.Sprintf("%2d. %v%v", i+1, item, sp)
+	if l.ordered {
+		return fmt.Sprintf("%2d. %v%v", i+1, item, sp)
+	} else {
+		return fmt.Sprintf(" %v%v", item, sp)
+	}
 }
 
 // displayPage resets the currentPageIdx and displays the requested page
@@ -268,6 +274,7 @@ func (l *List) displayPage(p int) error {
 			return err
 		}
 	}
+	l.SetTitle(l.title)
 
 	return nil
 }

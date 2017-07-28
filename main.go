@@ -33,17 +33,20 @@ const (
 	NEWS_VIEW    = "news"
 	SUMMARY_VIEW = "summary"
 	PROMPT_VIEW  = "prompt"
+	CONTENT_VIEW = "content"
 )
 
 var (
-	Lists     map[string]*List
-	tdb       *db.TDB
-	sitesList *List
-	newsList  *List
-	summary   *c.View
-	curW      int
-	curH      int
-	Bold      *color.Color
+	Lists          map[string]*List
+	tdb            *db.TDB
+	sitesList      *List
+	newsList       *List
+	contentList    *List
+	summary        *c.View
+	CurrentContent []string
+	curW           int
+	curH           int
+	Bold           *color.Color
 )
 
 // relSize calculates the  sizes of the sites view width
@@ -86,9 +89,23 @@ func layout(g *c.Gui) error {
 		}
 	}
 
+	if _, err = g.View(CONTENT_VIEW); err == nil {
+		_, err = g.SetView(CONTENT_VIEW, tw/8, th/8, (tw*7)/8, (th*7)/8)
+		if err != nil && err != c.ErrUnknownView {
+			return err
+		}
+	}
+
 	if curW != tw || curH != th {
+		sitesList.ResetPages()
 		sitesList.Draw()
+		newsList.ResetPages()
 		newsList.Draw()
+		if contentList != nil {
+			contentList.Reset()
+			UpdateContent(g, CurrentContent)
+			// contentList.Draw()
+		}
 		curW = tw
 		curH = th
 	}
@@ -170,7 +187,7 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal("Failed to create sites list:", err)
 	}
-	sitesList = CreateList(v)
+	sitesList = CreateList(v, true)
 	sitesList.Focus(g)
 
 	// it loads the existing sites if any at the beginning
@@ -187,7 +204,7 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal(" Failed to create news list:", err)
 	}
-	newsList = CreateList(v)
+	newsList = CreateList(v, true)
 	newsList.SetTitle("No news yet...")
 
 	// Summary view
@@ -232,13 +249,15 @@ func main() {
 	if err = g.SetKeybinding("", c.KeyEnter, c.ModNone, onEnter); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding(PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlQ, c.ModNone, removeTopView); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
 	if err = g.SetKeybinding("", c.KeyCtrlF, c.ModNone, find); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModNone, loadContent); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
 	// run the mainloop
 	if err = g.MainLoop(); err != nil && err != c.ErrQuit {
 		log.Println("terminews exited unexpectedly: ", err)

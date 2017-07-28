@@ -41,10 +41,12 @@ func updateSummary() error {
 	authorLine := fmt.Sprintf("%v %v", Bold.Sprint("By:"), event.Author)
 	publishedLine := fmt.Sprintf("%v %v", Bold.Sprint("Published on:"), event.Published)
 	urlLine := fmt.Sprintf("%v %v", Bold.Sprint("URL:"), event.Url)
-	summaryLine := fmt.Sprint(event.Summary)
 
-	_, err := fmt.Fprintf(summary, "\n\n %v\n %v\n %v\n\n %v",
-		authorLine, publishedLine, urlLine, summaryLine)
+	w, _ := summary.Size()
+	summaryLine := strings.Join(JustifiedLines(event.Summary, w-2), "\n ")
+
+	_, err := fmt.Fprintf(summary, "\n\n %v\n %v\n %v\n\n\n %v",
+		authorLine, publishedLine, urlLine, Bold.Sprint(summaryLine))
 
 	return err
 }
@@ -91,6 +93,21 @@ func loadSites() error {
 	return sitesList.SetItems(data)
 }
 
+// createContentView creates a view where the contents of thecurrently selected
+// event will be displayed
+func createContentView(g *c.Gui) error {
+	tw, th := g.Size()
+	v, err := g.SetView(CONTENT_VIEW, tw/8, th/8, (tw*7)/8, (th*7)/8)
+	if err != nil && err != c.ErrUnknownView {
+		return err
+	}
+	contentList = CreateList(v, false)
+	setTopWindowTitle(g, CONTENT_VIEW, "")
+	_, err = g.SetCurrentView(CONTENT_VIEW)
+
+	return err
+}
+
 // createPromptView creates a general purpose view to be used as input source
 // from the user
 func createPromptView(g *c.Gui, title string) error {
@@ -100,12 +117,18 @@ func createPromptView(g *c.Gui, title string) error {
 		return err
 	}
 	v.Editable = true
-	setPromptViewTitle(g, title)
+	setTopWindowTitle(g, PROMPT_VIEW, title)
 
 	g.Cursor = true
 	_, err = g.SetCurrentView(PROMPT_VIEW)
 
 	return err
+}
+
+// deleteContentView deletes the current prompt view
+func deleteContentView(g *c.Gui) error {
+	g.Cursor = false
+	return g.DeleteView(CONTENT_VIEW)
 }
 
 // deletePromptView deletes the current prompt view
@@ -114,9 +137,13 @@ func deletePromptView(g *c.Gui) error {
 	return g.DeleteView(PROMPT_VIEW)
 }
 
-func setPromptViewTitle(g *c.Gui, title string) {
-	v, _ := g.View(PROMPT_VIEW)
-	v.Title = fmt.Sprintf("%v (Ctrl-q to cancel)", title)
+func setTopWindowTitle(g *c.Gui, view_name, title string) {
+	v, err := g.View(view_name)
+	if err != nil {
+		log.Println("Error on setTopWindowTitle", err)
+		return
+	}
+	v.Title = fmt.Sprintf("%v (Ctrl-q to close)", title)
 }
 
 func isNewSitePrompt(v *c.View) bool {
@@ -188,12 +215,14 @@ func switchView(g *c.Gui, v *c.View) error {
 }
 
 func listUp(g *c.Gui, v *c.View) error {
-	if v == sitesList.View {
+	switch v.Name() {
+
+	case SITES_VIEW:
 		if err := sitesList.MoveUp(); err != nil {
 			log.Println("Error on sitesList.MoveUp()", err)
 			return err
 		}
-	} else {
+	case NEWS_VIEW:
 		if err := newsList.MoveUp(); err != nil {
 			log.Println("Error on newsList.MoveUp()", err)
 			return err
@@ -202,17 +231,24 @@ func listUp(g *c.Gui, v *c.View) error {
 			log.Println("Error on updateSummary()", err)
 			return err
 		}
+	case CONTENT_VIEW:
+		if err := contentList.MoveUp(); err != nil {
+			log.Println("Error on contentList.MoveUp()", err)
+			return err
+		}
 	}
 	return nil
 }
 
 func listDown(g *c.Gui, v *c.View) error {
-	if v == sitesList.View {
+	switch v.Name() {
+
+	case SITES_VIEW:
 		if err := sitesList.MoveDown(); err != nil {
 			log.Println("Error on sitesList.MoveDown()", err)
 			return err
 		}
-	} else {
+	case NEWS_VIEW:
 		if err := newsList.MoveDown(); err != nil {
 			log.Println("Error on newsList.MoveDown()", err)
 			return err
@@ -221,17 +257,24 @@ func listDown(g *c.Gui, v *c.View) error {
 			log.Println("Error on updateSummary()", err)
 			return err
 		}
+	case CONTENT_VIEW:
+		if err := contentList.MoveDown(); err != nil {
+			log.Println("Error on contentList.MoveDown()", err)
+			return err
+		}
 	}
 	return nil
 }
 
 func listPgDown(g *c.Gui, v *c.View) error {
-	if v == sitesList.View {
+	switch v.Name() {
+
+	case SITES_VIEW:
 		if err := sitesList.MovePgDown(); err != nil {
 			log.Println("Error on sitesList.MovePgDown()", err)
 			return err
 		}
-	} else {
+	case NEWS_VIEW:
 		if err := newsList.MovePgDown(); err != nil {
 			log.Println("Error on newsList.MovePgDown()", err)
 			return err
@@ -240,23 +283,35 @@ func listPgDown(g *c.Gui, v *c.View) error {
 			log.Println("Error on updateSummary()", err)
 			return err
 		}
+	case CONTENT_VIEW:
+		if err := contentList.MovePgDown(); err != nil {
+			log.Println("Error on contentList.MovePgDown()", err)
+			return err
+		}
 	}
 	return nil
 }
 
 func listPgUp(g *c.Gui, v *c.View) error {
-	if v == sitesList.View {
+	switch v.Name() {
+
+	case SITES_VIEW:
 		if err := sitesList.MovePgUp(); err != nil {
 			log.Println("Error on sitesList.MovePgUp()", err)
 			return err
 		}
-	} else {
+	case NEWS_VIEW:
 		if err := newsList.MovePgUp(); err != nil {
 			log.Println("Error on newsList.MovePgUp()", err)
 			return err
 		}
 		if err := updateSummary(); err != nil {
 			log.Println("Error on updateSummary()", err)
+			return err
+		}
+	case CONTENT_VIEW:
+		if err := contentList.MovePgUp(); err != nil {
+			log.Println("Error on contentList.MovePgUp()", err)
 			return err
 		}
 	}
@@ -276,7 +331,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 		newsList.Clear()
 		newsList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
-		newsList.Title = " Downloading ... "
+		newsList.Title = " Fetching ... "
 		g.Execute(func(g *c.Gui) error {
 			events, err := DownloadEvents(site.Url)
 			if err != nil {
@@ -304,7 +359,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 			g.Execute(func(g *c.Gui) error {
 				feed, err := CheckUrl(url)
 				if err != nil {
-					setPromptViewTitle(g, "Invalid URL, try again:")
+					setTopWindowTitle(g, PROMPT_VIEW, "Invalid URL, try again:")
 					g.SelFgColor = c.ColorRed | c.AttrBold
 					return nil
 				}
@@ -312,7 +367,7 @@ func onEnter(g *c.Gui, v *c.View) error {
 				_, err = tdb.GetSiteByUrl(url)
 				if err != nil {
 					if _, ok := err.(db.NotFound); !ok {
-						setPromptViewTitle(g, "Site already exists, try again:")
+						setTopWindowTitle(g, PROMPT_VIEW, "Site already exists, try again:")
 						g.SelFgColor = c.ColorRed | c.AttrBold
 						return nil
 					}
@@ -407,6 +462,9 @@ func loadBookmarks(g *c.Gui, v *c.View) error {
 func deleteEntry(g *c.Gui, v *c.View) error {
 	if v == sitesList.View {
 		currItem := sitesList.CurrentItem()
+		if currItem == nil {
+			return nil
+		}
 		rr := currItem.(db.Site)
 		if err := tdb.DeleteSite(rr.Id); err != nil {
 			log.Println("Error on DeleteSite", err)
@@ -419,6 +477,9 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 	} else {
 		if strings.Contains(newsList.Title, "My bookmarks") {
 			currItem := newsList.CurrentItem()
+			if currItem == nil {
+				return nil
+			}
 			event := currItem.(db.Event)
 			if err := tdb.DeleteEvent(event.Id); err != nil {
 				log.Println("Error on DeleteEvent", err)
@@ -433,12 +494,20 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func removePrompt(g *c.Gui, v *c.View) error {
-	if v.Name() == PROMPT_VIEW {
+func removeTopView(g *c.Gui, v *c.View) error {
+	switch v.Name() {
+
+	case PROMPT_VIEW:
 		sitesList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
 		if err := deletePromptView(g); err != nil {
 			log.Println("Error on deletePromptView", err)
+			return err
+		}
+	case CONTENT_VIEW:
+		newsList.Focus(g)
+		if err := deleteContentView(g); err != nil {
+			log.Println("Error on deleteContentView", err)
 			return err
 		}
 	}
@@ -460,5 +529,50 @@ func find(g *c.Gui, v *c.View) error {
 		return err
 	}
 
+	return nil
+}
+
+func loadContent(g *c.Gui, v *c.View) error {
+	if v.Name() == NEWS_VIEW {
+		if err := createContentView(g); err != nil {
+			log.Println("Error on createContentView", err)
+			return err
+		}
+		cv, _ := g.View(CONTENT_VIEW)
+		cv.Title = "Fetching..."
+		g.Execute(func(g *c.Gui) error {
+			contentList.Focus(g)
+			currItem := newsList.CurrentItem()
+			if currItem == nil {
+				return nil
+			}
+			event := currItem.(db.Event)
+			CurrentContent = GetContent(event.Url)
+			if err := UpdateContent(g, CurrentContent); err != nil {
+				log.Println("Error on UpdateContent", err)
+				return err
+			}
+			contentList.SetTitle(fmt.Sprintf("%v (Ctrl-q to close)", event.Title))
+			return nil
+		})
+
+	}
+	return nil
+}
+
+func UpdateContent(g *c.Gui, content []string) error {
+	w, _ := contentList.Size()
+	contentList.AddItem(g, "")
+	for _, text := range content {
+		lines := JustifiedLines(text, w-2)
+		for _, l := range lines {
+			err := contentList.AddItem(g, l)
+			if err != nil {
+				log.Println("Error on contentList.AddItem", err)
+				return err
+			}
+		}
+		contentList.AddItem(g, "")
+	}
 	return nil
 }
