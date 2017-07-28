@@ -41,10 +41,12 @@ func updateSummary() error {
 	authorLine := fmt.Sprintf("%v %v", Bold.Sprint("By:"), event.Author)
 	publishedLine := fmt.Sprintf("%v %v", Bold.Sprint("Published on:"), event.Published)
 	urlLine := fmt.Sprintf("%v %v", Bold.Sprint("URL:"), event.Url)
-	summaryLine := fmt.Sprint(event.Summary)
 
-	_, err := fmt.Fprintf(summary, "\n\n %v\n %v\n %v\n\n %v",
-		authorLine, publishedLine, urlLine, summaryLine)
+	w, _ := summary.Size()
+	summaryLine := strings.Join(JustifiedLines(event.Summary, w-2), "\n ")
+
+	_, err := fmt.Fprintf(summary, "\n\n %v\n %v\n %v\n\n\n %v",
+		authorLine, publishedLine, urlLine, Bold.Sprint(summaryLine))
 
 	return err
 }
@@ -539,31 +541,38 @@ func loadContent(g *c.Gui, v *c.View) error {
 		cv, _ := g.View(CONTENT_VIEW)
 		cv.Title = "Fetching..."
 		g.Execute(func(g *c.Gui) error {
+			contentList.Focus(g)
 			currItem := newsList.CurrentItem()
 			if currItem == nil {
 				return nil
 			}
 			event := currItem.(db.Event)
-			content := GetContent(event.Url)
-			contentList.AddItem(g, "")
-			w, _ := v.Size()
-			log.Println(w)
-			for _, text := range content {
-				lines := JustifiedLines(text, w)
-				for _, l := range lines {
-					err := contentList.AddItem(g, l)
-					if err != nil {
-						log.Println("Error on contentList.AddItem", err)
-						return err
-					}
-				}
-				contentList.AddItem(g, "")
+			CurrentContent = GetContent(event.Url)
+			if err := UpdateContent(g, CurrentContent); err != nil {
+				log.Println("Error on UpdateContent", err)
+				return err
 			}
-			contentList.Focus(g)
-			cv.Title = "Ctrl-q to close"
+			contentList.SetTitle(event.Title)
 			return nil
 		})
 
+	}
+	return nil
+}
+
+func UpdateContent(g *c.Gui, content []string) error {
+	w, _ := contentList.Size()
+	contentList.AddItem(g, "")
+	for _, text := range content {
+		lines := JustifiedLines(text, w-2)
+		for _, l := range lines {
+			err := contentList.AddItem(g, l)
+			if err != nil {
+				log.Println("Error on contentList.AddItem", err)
+				return err
+			}
+		}
+		contentList.AddItem(g, "")
 	}
 	return nil
 }

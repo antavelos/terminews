@@ -94,14 +94,14 @@ func (l *List) SetTitle(title string) {
 // the View
 func (l *List) SetItems(data []interface{}) error {
 	l.items = data
-	l.resetPages()
+	l.ResetPages()
 	return l.Draw()
 }
 
 // AddItem appends a given item to the existing list
 func (l *List) AddItem(g *c.Gui, item interface{}) error {
 	l.items = append(l.items, item)
-	l.resetPages()
+	l.ResetPages()
 	return l.Draw()
 }
 
@@ -181,9 +181,9 @@ func (l *List) ResetCursor() {
 	l.SetCursor(0, 0)
 }
 
-// resetPages (re)calculates the pages data based on the current length of the
+// ResetPages (re)calculates the pages data based on the current length of the
 // list and the current height of the View
-func (l *List) resetPages() {
+func (l *List) ResetPages() {
 	l.pages = []Page{}
 	for offset := 0; offset < l.length(); offset += l.height() {
 		limit := l.height()
@@ -274,6 +274,7 @@ func (l *List) displayPage(p int) error {
 			return err
 		}
 	}
+	l.SetTitle(l.title)
 
 	return nil
 }

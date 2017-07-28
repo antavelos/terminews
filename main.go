@@ -37,15 +37,16 @@ const (
 )
 
 var (
-	Lists       map[string]*List
-	tdb         *db.TDB
-	sitesList   *List
-	newsList    *List
-	contentList *List
-	summary     *c.View
-	curW        int
-	curH        int
-	Bold        *color.Color
+	Lists          map[string]*List
+	tdb            *db.TDB
+	sitesList      *List
+	newsList       *List
+	contentList    *List
+	summary        *c.View
+	CurrentContent []string
+	curW           int
+	curH           int
+	Bold           *color.Color
 )
 
 // relSize calculates the  sizes of the sites view width
@@ -96,10 +97,14 @@ func layout(g *c.Gui) error {
 	}
 
 	if curW != tw || curH != th {
+		sitesList.ResetPages()
 		sitesList.Draw()
+		newsList.ResetPages()
 		newsList.Draw()
 		if contentList != nil {
-			contentList.Draw()
+			contentList.Reset()
+			UpdateContent(g, CurrentContent)
+			// contentList.Draw()
 		}
 		curW = tw
 		curH = th
