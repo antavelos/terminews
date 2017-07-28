@@ -27,12 +27,12 @@ import (
 	c "github.com/jroimartin/gocui"
 )
 
-// updateSummary updates the summary View based on the currently selected
+// UpdateSummary updates the summary View based on the currently selected
 // news item
-func updateSummary() error {
-	summary.Clear()
+func UpdateSummary() error {
+	Summary.Clear()
 
-	currItem := newsList.CurrentItem()
+	currItem := NewsList.CurrentItem()
 	if currItem == nil {
 		return nil
 	}
@@ -42,47 +42,47 @@ func updateSummary() error {
 	publishedLine := fmt.Sprintf("%v %v", Bold.Sprint("Published on:"), event.Published)
 	urlLine := fmt.Sprintf("%v %v", Bold.Sprint("URL:"), event.Url)
 
-	w, _ := summary.Size()
+	w, _ := Summary.Size()
 	summaryLine := strings.Join(JustifiedLines(event.Summary, w-2), "\n ")
 
-	_, err := fmt.Fprintf(summary, "\n\n %v\n %v\n %v\n\n\n %v",
+	_, err := fmt.Fprintf(Summary, "\n\n %v\n %v\n %v\n\n\n %v",
 		authorLine, publishedLine, urlLine, Bold.Sprint(summaryLine))
 
 	return err
 }
 
-// updateNews updates the news list according to the given events
-func updateNews(events []db.Event, from string) error {
-	newsList.Reset()
-	summary.Clear()
+// UpdateNews updates the news list according to the given events
+func UpdateNews(events []db.Event, from string) error {
+	NewsList.Reset()
+	Summary.Clear()
 
 	if len(events) == 0 {
-		newsList.SetTitle(fmt.Sprintf("No news in %v", from))
+		NewsList.SetTitle(fmt.Sprintf("No news in %v", from))
 		return nil
 	}
-	newsList.SetTitle(fmt.Sprintf("News from: %v", from))
+	NewsList.SetTitle(fmt.Sprintf("News from: %v", from))
 
 	data := make([]interface{}, len(events))
 	for i, e := range events {
 		data[i] = e
 	}
 
-	return newsList.SetItems(data)
+	return NewsList.SetItems(data)
 }
 
-// loadSites loads the sites from DB and displays them in the list
-func loadSites() error {
-	sitesList.SetTitle("Sites")
+// LoadSites loads the sites from DB and displays them in the list
+func LoadSites() error {
+	SitesList.SetTitle("Sites")
 
 	sites, err := tdb.GetSites()
 	if err != nil {
 		fmt.Errorf("Failed to load sites: %v", err)
 	}
 	if len(sites) == 0 {
-		sitesList.SetTitle("No sites yet... (Ctrl-n to add)")
-		sitesList.Reset()
-		newsList.Reset()
-		newsList.SetTitle("No news yet...")
+		SitesList.SetTitle("No sites yet... (Ctrl-n to add)")
+		SitesList.Reset()
+		NewsList.Reset()
+		NewsList.SetTitle("No news yet...")
 		return nil
 	}
 	data := make([]interface{}, len(sites))
@@ -90,7 +90,7 @@ func loadSites() error {
 		data[i] = rr
 	}
 
-	return sitesList.SetItems(data)
+	return SitesList.SetItems(data)
 }
 
 // createContentView creates a view where the contents of thecurrently selected
@@ -101,7 +101,7 @@ func createContentView(g *c.Gui) error {
 	if err != nil && err != c.ErrUnknownView {
 		return err
 	}
-	contentList = CreateList(v, false)
+	ContentList = CreateList(v, false)
 	setTopWindowTitle(g, CONTENT_VIEW, "")
 	_, err = g.SetCurrentView(CONTENT_VIEW)
 
@@ -195,156 +195,156 @@ func findEvents(terms []string) chan db.Event {
 
 // Key binding functions
 
-func quit(g *c.Gui, v *c.View) error {
+func Quit(g *c.Gui, v *c.View) error {
 	return c.ErrQuit
 }
 
-func switchView(g *c.Gui, v *c.View) error {
+func SwitchView(g *c.Gui, v *c.View) error {
 	g.SelFgColor = c.ColorGreen | c.AttrBold
-	if v == sitesList.View {
-		newsList.Focus(g)
-		sitesList.Unfocus()
-		if strings.Contains(newsList.Title, "bookmarks") {
+	if v == SitesList.View {
+		NewsList.Focus(g)
+		SitesList.Unfocus()
+		if strings.Contains(NewsList.Title, "bookmarks") {
 			g.SelFgColor = c.ColorBlue | c.AttrBold
 		}
 	} else {
-		sitesList.Focus(g)
-		newsList.Unfocus()
+		SitesList.Focus(g)
+		NewsList.Unfocus()
 	}
 	return nil
 }
 
-func listUp(g *c.Gui, v *c.View) error {
+func ListUp(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 
 	case SITES_VIEW:
-		if err := sitesList.MoveUp(); err != nil {
-			log.Println("Error on sitesList.MoveUp()", err)
+		if err := SitesList.MoveUp(); err != nil {
+			log.Println("Error on SitesList.MoveUp()", err)
 			return err
 		}
 	case NEWS_VIEW:
-		if err := newsList.MoveUp(); err != nil {
-			log.Println("Error on newsList.MoveUp()", err)
+		if err := NewsList.MoveUp(); err != nil {
+			log.Println("Error on NewsList.MoveUp()", err)
 			return err
 		}
-		if err := updateSummary(); err != nil {
-			log.Println("Error on updateSummary()", err)
+		if err := UpdateSummary(); err != nil {
+			log.Println("Error on UpdateSummary()", err)
 			return err
 		}
 	case CONTENT_VIEW:
-		if err := contentList.MoveUp(); err != nil {
-			log.Println("Error on contentList.MoveUp()", err)
+		if err := ContentList.MoveUp(); err != nil {
+			log.Println("Error on ContentList.MoveUp()", err)
 			return err
 		}
 	}
 	return nil
 }
 
-func listDown(g *c.Gui, v *c.View) error {
+func ListDown(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 
 	case SITES_VIEW:
-		if err := sitesList.MoveDown(); err != nil {
-			log.Println("Error on sitesList.MoveDown()", err)
+		if err := SitesList.MoveDown(); err != nil {
+			log.Println("Error on SitesList.MoveDown()", err)
 			return err
 		}
 	case NEWS_VIEW:
-		if err := newsList.MoveDown(); err != nil {
-			log.Println("Error on newsList.MoveDown()", err)
+		if err := NewsList.MoveDown(); err != nil {
+			log.Println("Error on NewsList.MoveDown()", err)
 			return err
 		}
-		if err := updateSummary(); err != nil {
-			log.Println("Error on updateSummary()", err)
+		if err := UpdateSummary(); err != nil {
+			log.Println("Error on UpdateSummary()", err)
 			return err
 		}
 	case CONTENT_VIEW:
-		if err := contentList.MoveDown(); err != nil {
-			log.Println("Error on contentList.MoveDown()", err)
+		if err := ContentList.MoveDown(); err != nil {
+			log.Println("Error on ContentList.MoveDown()", err)
 			return err
 		}
 	}
 	return nil
 }
 
-func listPgDown(g *c.Gui, v *c.View) error {
+func ListPgDown(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 
 	case SITES_VIEW:
-		if err := sitesList.MovePgDown(); err != nil {
-			log.Println("Error on sitesList.MovePgDown()", err)
+		if err := SitesList.MovePgDown(); err != nil {
+			log.Println("Error on SitesList.MovePgDown()", err)
 			return err
 		}
 	case NEWS_VIEW:
-		if err := newsList.MovePgDown(); err != nil {
-			log.Println("Error on newsList.MovePgDown()", err)
+		if err := NewsList.MovePgDown(); err != nil {
+			log.Println("Error on NewsList.MovePgDown()", err)
 			return err
 		}
-		if err := updateSummary(); err != nil {
-			log.Println("Error on updateSummary()", err)
+		if err := UpdateSummary(); err != nil {
+			log.Println("Error on UpdateSummary()", err)
 			return err
 		}
 	case CONTENT_VIEW:
-		if err := contentList.MovePgDown(); err != nil {
-			log.Println("Error on contentList.MovePgDown()", err)
+		if err := ContentList.MovePgDown(); err != nil {
+			log.Println("Error on ContentList.MovePgDown()", err)
 			return err
 		}
 	}
 	return nil
 }
 
-func listPgUp(g *c.Gui, v *c.View) error {
+func ListPgUp(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 
 	case SITES_VIEW:
-		if err := sitesList.MovePgUp(); err != nil {
-			log.Println("Error on sitesList.MovePgUp()", err)
+		if err := SitesList.MovePgUp(); err != nil {
+			log.Println("Error on SitesList.MovePgUp()", err)
 			return err
 		}
 	case NEWS_VIEW:
-		if err := newsList.MovePgUp(); err != nil {
-			log.Println("Error on newsList.MovePgUp()", err)
+		if err := NewsList.MovePgUp(); err != nil {
+			log.Println("Error on NewsList.MovePgUp()", err)
 			return err
 		}
-		if err := updateSummary(); err != nil {
-			log.Println("Error on updateSummary()", err)
+		if err := UpdateSummary(); err != nil {
+			log.Println("Error on UpdateSummary()", err)
 			return err
 		}
 	case CONTENT_VIEW:
-		if err := contentList.MovePgUp(); err != nil {
-			log.Println("Error on contentList.MovePgUp()", err)
+		if err := ContentList.MovePgUp(); err != nil {
+			log.Println("Error on ContentList.MovePgUp()", err)
 			return err
 		}
 	}
 	return nil
 }
 
-func onEnter(g *c.Gui, v *c.View) error {
+func OnEnter(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 	case SITES_VIEW:
-		currItem := sitesList.CurrentItem()
+		currItem := SitesList.CurrentItem()
 		if currItem == nil {
 			return nil
 		}
 		site := currItem.(db.Site)
 
-		summary.Clear()
-		newsList.Clear()
-		newsList.Focus(g)
+		Summary.Clear()
+		NewsList.Clear()
+		NewsList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
-		newsList.Title = " Fetching ... "
+		NewsList.Title = " Fetching ... "
 		g.Execute(func(g *c.Gui) error {
 			events, err := DownloadEvents(site.Url)
 			if err != nil {
-				newsList.Title = fmt.Sprintf(" Failed to load news from: %v ", site.Name)
-				newsList.Clear()
+				NewsList.Title = fmt.Sprintf(" Failed to load news from: %v ", site.Name)
+				NewsList.Clear()
 			} else {
-				newsList.Focus(g)
-				if err := updateNews(events, site.Name); err != nil {
-					log.Println("Error on updateNews", err)
+				NewsList.Focus(g)
+				if err := UpdateNews(events, site.Name); err != nil {
+					log.Println("Error on UpdateNews", err)
 					return err
 				}
-				if err := updateSummary(); err != nil {
-					log.Println("Error on updateSummary", err)
+				if err := UpdateSummary(); err != nil {
+					log.Println("Error on UpdateSummary", err)
 					return err
 				}
 			}
@@ -383,10 +383,10 @@ func onEnter(g *c.Gui, v *c.View) error {
 				}
 				deletePromptView(g)
 				g.SelFgColor = c.ColorGreen | c.AttrBold
-				sitesList.Focus(g)
+				SitesList.Focus(g)
 
-				if err = loadSites(); err != nil {
-					log.Println("Error on loadSites", err)
+				if err = LoadSites(); err != nil {
+					log.Println("Error on LoadSites", err)
 					return err
 				}
 
@@ -394,22 +394,22 @@ func onEnter(g *c.Gui, v *c.View) error {
 			})
 		}
 		if isFindPrompt(v) {
-			newsList.Reset()
-			newsList.Focus(g)
-			sitesList.Unfocus()
-			newsList.Title = " Searching ... "
+			NewsList.Reset()
+			NewsList.Focus(g)
+			SitesList.Unfocus()
+			NewsList.Title = " Searching ... "
 			deletePromptView(g)
 			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
 			g.Execute(func(g *c.Gui) error {
 				c := 0
 				for event := range findEvents(terms) {
-					newsList.AddItem(g, event)
+					NewsList.AddItem(g, event)
 					c++
 				}
 				if c == 0 {
-					newsList.SetTitle("No events found")
+					NewsList.SetTitle("No events found")
 				} else {
-					newsList.SetTitle(fmt.Sprintf("%v event(s) found", c))
+					NewsList.SetTitle(fmt.Sprintf("%v event(s) found", c))
 				}
 				return nil
 			})
@@ -419,9 +419,9 @@ func onEnter(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func addBookmark(g *c.Gui, v *c.View) error {
+func AddBookmark(g *c.Gui, v *c.View) error {
 	if v.Name() == NEWS_VIEW {
-		currItem := newsList.CurrentItem()
+		currItem := NewsList.CurrentItem()
 		if currItem == nil {
 			return nil
 		}
@@ -434,7 +434,7 @@ func addBookmark(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func loadBookmarks(g *c.Gui, v *c.View) error {
+func LoadBookmarks(g *c.Gui, v *c.View) error {
 	events, err := tdb.GetEvents()
 	if err != nil {
 		log.Println("Error on AddEvent", err)
@@ -442,16 +442,16 @@ func loadBookmarks(g *c.Gui, v *c.View) error {
 	}
 	source := "My bookmarks"
 	if err != nil {
-		newsList.Title = fmt.Sprintf(" Failed to load news from: %v ", source)
-		newsList.Clear()
+		NewsList.Title = fmt.Sprintf(" Failed to load news from: %v ", source)
+		NewsList.Clear()
 	} else {
-		newsList.Focus(g)
-		if err := updateNews(events, source); err != nil {
-			log.Println("Error on updateNews", err)
+		NewsList.Focus(g)
+		if err := UpdateNews(events, source); err != nil {
+			log.Println("Error on UpdateNews", err)
 			return err
 		}
-		if err := updateSummary(); err != nil {
-			log.Println("Error on updateSummary", err)
+		if err := UpdateSummary(); err != nil {
+			log.Println("Error on UpdateSummary", err)
 			return err
 		}
 	}
@@ -459,9 +459,9 @@ func loadBookmarks(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func deleteEntry(g *c.Gui, v *c.View) error {
-	if v == sitesList.View {
-		currItem := sitesList.CurrentItem()
+func DeleteEntry(g *c.Gui, v *c.View) error {
+	if v == SitesList.View {
+		currItem := SitesList.CurrentItem()
 		if currItem == nil {
 			return nil
 		}
@@ -470,13 +470,13 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 			log.Println("Error on DeleteSite", err)
 			return err
 		}
-		if err := loadSites(); err != nil {
-			log.Println("Error on loadSites", err)
+		if err := LoadSites(); err != nil {
+			log.Println("Error on LoadSites", err)
 			return err
 		}
 	} else {
-		if strings.Contains(newsList.Title, "My bookmarks") {
-			currItem := newsList.CurrentItem()
+		if strings.Contains(NewsList.Title, "My bookmarks") {
+			currItem := NewsList.CurrentItem()
 			if currItem == nil {
 				return nil
 			}
@@ -485,8 +485,8 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 				log.Println("Error on DeleteEvent", err)
 				return err
 			}
-			if err := loadBookmarks(g, v); err != nil {
-				log.Println("Error on loadBookmarks", err)
+			if err := LoadBookmarks(g, v); err != nil {
+				log.Println("Error on LoadBookmarks", err)
 				return err
 			}
 		}
@@ -494,18 +494,18 @@ func deleteEntry(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func removeTopView(g *c.Gui, v *c.View) error {
+func RemoveTopView(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 
 	case PROMPT_VIEW:
-		sitesList.Focus(g)
+		SitesList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
 		if err := deletePromptView(g); err != nil {
 			log.Println("Error on deletePromptView", err)
 			return err
 		}
 	case CONTENT_VIEW:
-		newsList.Focus(g)
+		NewsList.Focus(g)
 		if err := deleteContentView(g); err != nil {
 			log.Println("Error on deleteContentView", err)
 			return err
@@ -514,7 +514,7 @@ func removeTopView(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func addSite(g *c.Gui, v *c.View) error {
+func AddSite(g *c.Gui, v *c.View) error {
 	if err := createPromptView(g, "New site URL:"); err != nil {
 		log.Println("Error on createPromptView", err)
 		return err
@@ -523,7 +523,7 @@ func addSite(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func find(g *c.Gui, v *c.View) error {
+func Find(g *c.Gui, v *c.View) error {
 	if err := createPromptView(g, "Search with multiple terms:"); err != nil {
 		log.Println("Error on createPromptView", err)
 		return err
@@ -532,7 +532,7 @@ func find(g *c.Gui, v *c.View) error {
 	return nil
 }
 
-func loadContent(g *c.Gui, v *c.View) error {
+func LoadContent(g *c.Gui, v *c.View) error {
 	if v.Name() == NEWS_VIEW {
 		if err := createContentView(g); err != nil {
 			log.Println("Error on createContentView", err)
@@ -541,8 +541,8 @@ func loadContent(g *c.Gui, v *c.View) error {
 		cv, _ := g.View(CONTENT_VIEW)
 		cv.Title = "Fetching..."
 		g.Execute(func(g *c.Gui) error {
-			contentList.Focus(g)
-			currItem := newsList.CurrentItem()
+			ContentList.Focus(g)
+			currItem := NewsList.CurrentItem()
 			if currItem == nil {
 				return nil
 			}
@@ -552,7 +552,7 @@ func loadContent(g *c.Gui, v *c.View) error {
 				log.Println("Error on UpdateContent", err)
 				return err
 			}
-			contentList.SetTitle(fmt.Sprintf("%v (Ctrl-q to close)", event.Title))
+			ContentList.SetTitle(fmt.Sprintf("%v (Ctrl-q to close)", event.Title))
 			return nil
 		})
 
@@ -561,24 +561,24 @@ func loadContent(g *c.Gui, v *c.View) error {
 }
 
 func UpdateContent(g *c.Gui, content []string) error {
-	w, _ := contentList.Size()
-	contentList.AddItem(g, "")
+	w, _ := ContentList.Size()
+	ContentList.AddItem(g, "")
 	for _, text := range content {
 		lines := JustifiedLines(text, w-2)
 		for _, l := range lines {
-			err := contentList.AddItem(g, l)
+			err := ContentList.AddItem(g, l)
 			if err != nil {
-				log.Println("Error on contentList.AddItem", err)
+				log.Println("Error on ContentList.AddItem", err)
 				return err
 			}
 		}
-		contentList.AddItem(g, "")
+		ContentList.AddItem(g, "")
 	}
 	return nil
 }
 
 func OpenBrowser(g *c.Gui, v *c.View) error {
-	currItem := newsList.CurrentItem()
+	currItem := NewsList.CurrentItem()
 	if currItem == nil {
 		return nil
 	}

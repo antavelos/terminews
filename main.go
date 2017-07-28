@@ -37,12 +37,11 @@ const (
 )
 
 var (
-	Lists          map[string]*List
 	tdb            *db.TDB
-	sitesList      *List
-	newsList       *List
-	contentList    *List
-	summary        *c.View
+	SitesList      *List
+	NewsList       *List
+	ContentList    *List
+	Summary        *c.View
 	CurrentContent []string
 	curW           int
 	curH           int
@@ -78,9 +77,9 @@ func layout(g *c.Gui) error {
 
 	_, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, tw-1, th-1)
 	if err != nil {
-		log.Fatal("Cannot update summary view.", err)
+		log.Fatal("Cannot update Summary view.", err)
 	}
-	updateSummary()
+	UpdateSummary()
 
 	if _, err = g.View(PROMPT_VIEW); err == nil {
 		_, err = g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
@@ -97,14 +96,14 @@ func layout(g *c.Gui) error {
 	}
 
 	if curW != tw || curH != th {
-		sitesList.ResetPages()
-		sitesList.Draw()
-		newsList.ResetPages()
-		newsList.Draw()
-		if contentList != nil {
-			contentList.Reset()
+		SitesList.ResetPages()
+		SitesList.Draw()
+		NewsList.ResetPages()
+		NewsList.Draw()
+		if ContentList != nil {
+			ContentList.Reset()
 			UpdateContent(g, CurrentContent)
-			// contentList.Draw()
+			// ContentList.Draw()
 		}
 		curW = tw
 		curH = th
@@ -137,7 +136,6 @@ func main() {
 	var err error
 
 	Bold = color.New(color.Bold)
-	Lists = make(map[string]*List)
 
 	appDir, err := getAppDir()
 	if err != nil {
@@ -187,12 +185,12 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal("Failed to create sites list:", err)
 	}
-	sitesList = CreateList(v, true)
-	sitesList.Focus(g)
+	SitesList = CreateList(v, true)
+	SitesList.Focus(g)
 
 	// it loads the existing sites if any at the beginning
 	g.Execute(func(g *c.Gui) error {
-		if err := loadSites(); err != nil {
+		if err := LoadSites(); err != nil {
 			log.Fatal("Error while loading sites", err)
 		}
 		log.Print("Loaded initial sites")
@@ -204,58 +202,58 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal(" Failed to create news list:", err)
 	}
-	newsList = CreateList(v, true)
-	newsList.SetTitle("No news yet...")
+	NewsList = CreateList(v, true)
+	NewsList.SetTitle("No news yet...")
 
 	// Summary view
-	summary, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, curW-1, curH-1)
+	Summary, err = g.SetView(SUMMARY_VIEW, rw+1, rh+1, curW-1, curH-1)
 	if err != nil && err != c.ErrUnknownView {
-		log.Fatal("Failed to create summary view:", err)
+		log.Fatal("Failed to create Summary view:", err)
 	}
-	summary.Title = " Summary "
-	summary.Wrap = true
+	Summary.Title = " Summary "
+	Summary.Wrap = true
 
 	// setup the keybindings of the app
-	if err = g.SetKeybinding("", c.KeyCtrlN, c.ModNone, addSite); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlN, c.ModNone, AddSite); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyDelete, c.ModNone, deleteEntry); err != nil {
+	if err = g.SetKeybinding("", c.KeyDelete, c.ModNone, DeleteEntry); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlB, c.ModNone, addBookmark); err != nil {
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlB, c.ModNone, AddBookmark); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyCtrlC, c.ModNone, quit); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlC, c.ModNone, Quit); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyCtrlB, c.ModAlt, loadBookmarks); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlB, c.ModAlt, LoadBookmarks); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyTab, c.ModNone, switchView); err != nil {
+	if err = g.SetKeybinding("", c.KeyTab, c.ModNone, SwitchView); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, listUp); err != nil {
+	if err = g.SetKeybinding("", c.KeyArrowUp, c.ModNone, ListUp); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, listDown); err != nil {
+	if err = g.SetKeybinding("", c.KeyArrowDown, c.ModNone, ListDown); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyPgup, c.ModNone, listPgUp); err != nil {
+	if err = g.SetKeybinding("", c.KeyPgup, c.ModNone, ListPgUp); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, listPgDown); err != nil {
+	if err = g.SetKeybinding("", c.KeyPgdn, c.ModNone, ListPgDown); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyEnter, c.ModNone, onEnter); err != nil {
+	if err = g.SetKeybinding("", c.KeyEnter, c.ModNone, OnEnter); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyCtrlQ, c.ModNone, removeTopView); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlQ, c.ModNone, RemoveTopView); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding("", c.KeyCtrlF, c.ModNone, find); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlF, c.ModNone, Find); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModNone, loadContent); err != nil {
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModNone, LoadContent); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
 	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModAlt, OpenBrowser); err != nil {
