@@ -99,7 +99,7 @@ func createContentView(g *c.Gui) error {
 	if err != nil && err != c.ErrUnknownView {
 		return err
 	}
-	contentList = CreateList(v)
+	contentList = CreateList(v, false)
 	setTopWindowTitle(g, CONTENT_VIEW, "")
 	_, err = g.SetCurrentView(CONTENT_VIEW)
 
@@ -547,8 +547,9 @@ func loadContent(g *c.Gui, v *c.View) error {
 			content := GetContent(event.Url)
 			contentList.AddItem(g, "")
 			w, _ := v.Size()
+			log.Println(w)
 			for _, text := range content {
-				lines := JustifiedLines(text, w-2)
+				lines := JustifiedLines(text, w)
 				for _, l := range lines {
 					err := contentList.AddItem(g, l)
 					if err != nil {
@@ -559,7 +560,7 @@ func loadContent(g *c.Gui, v *c.View) error {
 				contentList.AddItem(g, "")
 			}
 			contentList.Focus(g)
-			cv.Title = "Ctrl-q to go back"
+			cv.Title = "Ctrl-q to close"
 			return nil
 		})
 

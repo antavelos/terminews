@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"golang.org/x/net/html"
 	"net/http"
-	// "strings"
+	"strings"
 )
 
 func ParseUrl(url string, ch chan string, done chan bool) {
@@ -64,7 +64,7 @@ func ParseUrl(url string, ch chan string, done chan bool) {
 		case html.TextToken:
 			if inParagraph {
 				t := fmt.Sprint(z.Token())
-				ch <- html.UnescapeString(t)
+				ch <- strings.TrimSpace(html.UnescapeString(t))
 			}
 		}
 	}

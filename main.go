@@ -98,6 +98,9 @@ func layout(g *c.Gui) error {
 	if curW != tw || curH != th {
 		sitesList.Draw()
 		newsList.Draw()
+		if contentList != nil {
+			contentList.Draw()
+		}
 		curW = tw
 		curH = th
 	}
@@ -179,7 +182,7 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal("Failed to create sites list:", err)
 	}
-	sitesList = CreateList(v)
+	sitesList = CreateList(v, true)
 	sitesList.Focus(g)
 
 	// it loads the existing sites if any at the beginning
@@ -196,7 +199,7 @@ func main() {
 	if err != nil && err != c.ErrUnknownView {
 		log.Fatal(" Failed to create news list:", err)
 	}
-	newsList = CreateList(v)
+	newsList = CreateList(v, true)
 	newsList.SetTitle("No news yet...")
 
 	// Summary view

@@ -36,16 +36,18 @@ type List struct {
 	items       []interface{}
 	pages       []Page
 	currPageIdx int
+	ordered     bool
 }
 
 // CreateList initializes a List object with an existing View by applying some
 // basic configuration
-func CreateList(v *c.View) *List {
+func CreateList(v *c.View, ordered bool) *List {
 	list := &List{}
 	list.View = v
 	list.SelBgColor = c.ColorBlack
 	list.SelFgColor = c.ColorWhite | c.AttrBold
 	list.Autoscroll = true
+	list.ordered = ordered
 
 	return list
 }
@@ -255,7 +257,11 @@ func (l *List) prevPageIdx() int {
 func (l *List) displayItem(i int) string {
 	item := fmt.Sprint(l.items[i])
 	sp := spaces(l.width() - len(item) - 3)
-	return fmt.Sprintf("%2d. %v%v", i+1, item, sp)
+	if l.ordered {
+		return fmt.Sprintf("%2d. %v%v", i+1, item, sp)
+	} else {
+		return fmt.Sprintf(" %v%v", item, sp)
+	}
 }
 
 // displayPage resets the currentPageIdx and displays the requested page
