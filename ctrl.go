@@ -20,8 +20,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os/exec"
 	"strings"
-	_ "time"
 
 	"github.com/antavelos/terminews/db"
 	c "github.com/jroimartin/gocui"
@@ -573,6 +573,23 @@ func UpdateContent(g *c.Gui, content []string) error {
 			}
 		}
 		contentList.AddItem(g, "")
+	}
+	return nil
+}
+
+func OpenBrowser(g *c.Gui, v *c.View) error {
+	currItem := newsList.CurrentItem()
+	if currItem == nil {
+		return nil
+	}
+	event := currItem.(db.Event)
+	if v.Name() == NEWS_VIEW {
+		cmd := exec.Command("xdg-open", event.Url)
+
+		if err := cmd.Run(); err != nil {
+			log.Println("Error on opening browser", err)
+			return err
+		}
 	}
 	return nil
 }

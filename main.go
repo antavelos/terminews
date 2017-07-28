@@ -258,6 +258,9 @@ func main() {
 	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModNone, loadContent); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModAlt, OpenBrowser); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
 	// run the mainloop
 	if err = g.MainLoop(); err != nil && err != c.ErrQuit {
 		log.Println("terminews exited unexpectedly: ", err)
