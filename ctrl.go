@@ -143,7 +143,7 @@ func setTopWindowTitle(g *c.Gui, view_name, title string) {
 		log.Println("Error on setTopWindowTitle", err)
 		return
 	}
-	v.Title = fmt.Sprintf("%v (Ctrl-q to cancel)", title)
+	v.Title = fmt.Sprintf("%v (Ctrl-q to close)", title)
 }
 
 func isNewSitePrompt(v *c.View) bool {
@@ -552,7 +552,7 @@ func loadContent(g *c.Gui, v *c.View) error {
 				log.Println("Error on UpdateContent", err)
 				return err
 			}
-			contentList.SetTitle(event.Title)
+			contentList.SetTitle(fmt.Sprintf("%v (Ctrl-q to close)", event.Title))
 			return nil
 		})
 
