@@ -33,17 +33,19 @@ const (
 	NEWS_VIEW    = "news"
 	SUMMARY_VIEW = "summary"
 	PROMPT_VIEW  = "prompt"
+	CONTENT_VIEW = "content"
 )
 
 var (
-	Lists     map[string]*List
-	tdb       *db.TDB
-	sitesList *List
-	newsList  *List
-	summary   *c.View
-	curW      int
-	curH      int
-	Bold      *color.Color
+	Lists       map[string]*List
+	tdb         *db.TDB
+	sitesList   *List
+	newsList    *List
+	contentList *List
+	summary     *c.View
+	curW        int
+	curH        int
+	Bold        *color.Color
 )
 
 // relSize calculates the  sizes of the sites view width
@@ -81,6 +83,13 @@ func layout(g *c.Gui) error {
 
 	if _, err = g.View(PROMPT_VIEW); err == nil {
 		_, err = g.SetView(PROMPT_VIEW, tw/6, (th/2)-1, (tw*5)/6, (th/2)+1)
+		if err != nil && err != c.ErrUnknownView {
+			return err
+		}
+	}
+
+	if _, err = g.View(CONTENT_VIEW); err == nil {
+		_, err = g.SetView(CONTENT_VIEW, tw/8, th/8, (tw*7)/8, (th*7)/8)
 		if err != nil && err != c.ErrUnknownView {
 			return err
 		}
@@ -232,13 +241,15 @@ func main() {
 	if err = g.SetKeybinding("", c.KeyEnter, c.ModNone, onEnter); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-	if err = g.SetKeybinding(PROMPT_VIEW, c.KeyCtrlQ, c.ModNone, removePrompt); err != nil {
+	if err = g.SetKeybinding("", c.KeyCtrlQ, c.ModNone, removeTopView); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
 	if err = g.SetKeybinding("", c.KeyCtrlF, c.ModNone, find); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
-
+	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModNone, loadContent); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
 	// run the mainloop
 	if err = g.MainLoop(); err != nil && err != c.ErrQuit {
 		log.Println("terminews exited unexpectedly: ", err)
