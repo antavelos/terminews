@@ -10,6 +10,10 @@
 * [Sqlite3](https://www.sqlite.org/)
 	For storing site' data and bookmarking news.
 
+### From binary
+
+   You may download and run the binary from the latest [release](https://github.com/antavelos/terminews/releases/tag/v1.0)
+
 ### From source code
 
     go get github.com/antavelos/terminews
