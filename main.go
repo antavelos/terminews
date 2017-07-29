@@ -37,15 +37,16 @@ const (
 )
 
 var (
-	tdb            *db.TDB
-	SitesList      *List
-	NewsList       *List
-	ContentList    *List
-	Summary        *c.View
-	CurrentContent []string
-	curW           int
-	curH           int
-	Bold           *color.Color
+	tdb              *db.TDB
+	SitesList        *List
+	NewsList         *List
+	ContentList      *List
+	Summary          *c.View
+	CurrentContent   []string
+	CurrentBookmarks []db.Event
+	curW             int
+	curH             int
+	Bold             *color.Color
 )
 
 // relSize calculates the  sizes of the sites view width
@@ -212,6 +213,12 @@ func main() {
 	}
 	Summary.Title = " Summary "
 	Summary.Wrap = true
+
+	// preload thebookmarks
+	CurrentBookmarks, err = tdb.GetEvents()
+	if err != nil {
+		log.Println("Error on load bookmarks", err)
+	}
 
 	// setup the keybindings of the app
 	if err = g.SetKeybinding("", c.KeyCtrlN, c.ModNone, AddSite); err != nil {

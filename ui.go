@@ -105,12 +105,27 @@ func (l *List) AddItem(g *c.Gui, item interface{}) error {
 	return l.Draw()
 }
 
+func (l *List) UpdateCurrentItem(item interface{}) {
+	page := l.currPage()
+	data := l.items[page.offset : page.offset+page.limit]
+
+	data[l.currentCursorY()] = item
+}
+
 // Draw calculates the pages and draws the first one
 func (l *List) Draw() error {
 	if l.IsEmpty() {
 		return nil
 	}
 	return l.displayPage(0)
+}
+
+// Draw calculates the pages and draws the first one
+func (l *List) DrawCurrentPage() error {
+	if l.IsEmpty() {
+		return nil
+	}
+	return l.displayPage(l.currPageIdx)
 }
 
 // MoveDown moves the cursor to the line below or the next page if any
@@ -266,8 +281,8 @@ func (l *List) displayItem(i int) string {
 
 // displayPage resets the currentPageIdx and displays the requested page
 func (l *List) displayPage(p int) error {
-	l.currPageIdx = p
 	l.Clear()
+	l.currPageIdx = p
 	page := l.pages[l.currPageIdx]
 	for i := page.offset; i < page.offset+page.limit; i++ {
 		if _, err := fmt.Fprintln(l.View, l.displayItem(i)); err != nil {

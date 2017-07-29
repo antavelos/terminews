@@ -51,6 +51,15 @@ func UpdateSummary() error {
 	return err
 }
 
+func eventInBookmarks(event db.Event) (db.Event, bool) {
+	for _, b := range CurrentBookmarks {
+		if event.Url == b.Url {
+			return b, true
+		}
+	}
+	return db.Event{}, false
+}
+
 // UpdateNews updates the news list according to the given events
 func UpdateNews(events []db.Event, from string) error {
 	NewsList.Reset()
@@ -64,6 +73,9 @@ func UpdateNews(events []db.Event, from string) error {
 
 	data := make([]interface{}, len(events))
 	for i, e := range events {
+		if _, ok := eventInBookmarks(e); ok {
+			e.Title = fmt.Sprintf("  %v", e.Title)
+		}
 		data[i] = e
 	}
 
@@ -154,6 +166,10 @@ func isFindPrompt(v *c.View) bool {
 	return strings.Contains(v.Title, "Search ")
 }
 
+func isBookmarksNews() bool {
+	return strings.Contains(NewsList.Title, "My bookmarks")
+}
+
 // eventSatisfiesSearch searches within thr title and the summary of an event
 // and if a list of terms exists conjuctively and case insensitively
 func eventSatisfiesSearch(terms []string, e db.Event) bool {
@@ -205,7 +221,7 @@ func SwitchView(g *c.Gui, v *c.View) error {
 		NewsList.Focus(g)
 		SitesList.Unfocus()
 		if strings.Contains(NewsList.Title, "bookmarks") {
-			g.SelFgColor = c.ColorBlue | c.AttrBold
+			g.SelFgColor = c.ColorMagenta | c.AttrBold
 		}
 	} else {
 		SitesList.Focus(g)
@@ -420,22 +436,51 @@ func OnEnter(g *c.Gui, v *c.View) error {
 }
 
 func AddBookmark(g *c.Gui, v *c.View) error {
+	var err error
 	if v.Name() == NEWS_VIEW {
-		currItem := NewsList.CurrentItem()
-		if currItem == nil {
+		g.Execute(func(g *c.Gui) error {
+			currItem := NewsList.CurrentItem()
+			if currItem == nil {
+				return nil
+			}
+			event := currItem.(db.Event)
+
+			if bookmark, ok := eventInBookmarks(event); ok {
+				if err := tdb.DeleteEvent(bookmark.Id); err != nil {
+					log.Println("Error on DeleteEvent", err)
+					return err
+				}
+				event.Title = event.Title[5:]
+			} else {
+				if err := tdb.AddEvent(event); err != nil {
+					log.Println("Error on AddEvent", err)
+					return err
+				}
+				event.Title = fmt.Sprintf("  %v", event.Title)
+			}
+			if CurrentBookmarks, err = tdb.GetEvents(); err != nil {
+				log.Println("Error on GetEvents", err)
+				return err
+			}
+			NewsList.UpdateCurrentItem(event)
+			if err := NewsList.DrawCurrentPage(); err != nil {
+				log.Println("Error while updating event on bookmark", err)
+				return err
+			}
 			return nil
-		}
-		event := currItem.(db.Event)
-		if err := tdb.AddEvent(event); err != nil {
-			log.Println("Error on AddEvent", err)
-			return err
-		}
+		})
 	}
 	return nil
 }
 
 func LoadBookmarks(g *c.Gui, v *c.View) error {
-	events, err := tdb.GetEvents()
+	var err error
+	name := v.Name()
+	if name == PROMPT_VIEW || name == CONTENT_VIEW {
+		return nil
+	}
+
+	CurrentBookmarks, err = tdb.GetEvents()
 	if err != nil {
 		log.Println("Error on AddEvent", err)
 		return err
@@ -446,7 +491,7 @@ func LoadBookmarks(g *c.Gui, v *c.View) error {
 		NewsList.Clear()
 	} else {
 		NewsList.Focus(g)
-		if err := UpdateNews(events, source); err != nil {
+		if err := UpdateNews(CurrentBookmarks, source); err != nil {
 			log.Println("Error on UpdateNews", err)
 			return err
 		}
@@ -455,7 +500,7 @@ func LoadBookmarks(g *c.Gui, v *c.View) error {
 			return err
 		}
 	}
-	g.SelFgColor = c.ColorBlue | c.AttrBold
+	g.SelFgColor = c.ColorMagenta | c.AttrBold
 	return nil
 }
 
@@ -499,13 +544,22 @@ func RemoveTopView(g *c.Gui, v *c.View) error {
 
 	case PROMPT_VIEW:
 		SitesList.Focus(g)
-		g.SelFgColor = c.ColorGreen | c.AttrBold
+		if isBookmarksNews() {
+			g.SelFgColor = c.ColorMagenta | c.AttrBold
+		} else {
+			g.SelFgColor = c.ColorGreen | c.AttrBold
+		}
 		if err := deletePromptView(g); err != nil {
 			log.Println("Error on deletePromptView", err)
 			return err
 		}
 	case CONTENT_VIEW:
 		NewsList.Focus(g)
+		if isBookmarksNews() {
+			g.SelFgColor = c.ColorMagenta | c.AttrBold
+		} else {
+			g.SelFgColor = c.ColorGreen | c.AttrBold
+		}
 		if err := deleteContentView(g); err != nil {
 			log.Println("Error on deleteContentView", err)
 			return err
@@ -538,6 +592,7 @@ func LoadContent(g *c.Gui, v *c.View) error {
 			log.Println("Error on createContentView", err)
 			return err
 		}
+		g.SelFgColor = c.ColorGreen | c.AttrBold
 		cv, _ := g.View(CONTENT_VIEW)
 		cv.Title = "Fetching..."
 		g.Execute(func(g *c.Gui) error {
@@ -553,6 +608,7 @@ func LoadContent(g *c.Gui, v *c.View) error {
 				return err
 			}
 			ContentList.SetTitle(fmt.Sprintf("%v (Ctrl-q to close)", event.Title))
+
 			return nil
 		})
 
