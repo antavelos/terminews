@@ -186,27 +186,27 @@ func eventSatisfiesSearch(terms []string, e db.Event) bool {
 
 // findEvents downloads the events of every available site and returns those
 // which match the given terms
-func findEvents(terms []string) chan db.Event {
-	c := make(chan db.Event)
+func findEvents(terms []string, c chan db.Event, done chan bool) {
+	defer func() {
+		done <- true
+	}()
+
 	sites, err := tdb.GetSites()
 	if err != nil {
-		close(c)
+		return
 	}
-	go func() {
-		for _, site := range sites {
-			events, err := DownloadEvents(site.Url)
-			if err != nil {
-				continue
-			}
-			for _, e := range events {
-				if eventSatisfiesSearch(terms, e) {
-					c <- e
-				}
+
+	for _, site := range sites {
+		events, err := DownloadEvents(site.Url)
+		if err != nil {
+			continue
+		}
+		for _, e := range events {
+			if eventSatisfiesSearch(terms, e) {
+				c <- e
 			}
 		}
-		close(c)
-	}()
-	return c
+	}
 }
 
 // Key binding functions
@@ -416,19 +416,29 @@ func OnEnter(g *c.Gui, v *c.View) error {
 			NewsList.Title = " Searching ... "
 			deletePromptView(g)
 			terms := strings.Split(strings.TrimSpace(v.ViewBuffer()), " ")
-			g.Execute(func(g *c.Gui) error {
-				c := 0
-				for event := range findEvents(terms) {
-					NewsList.AddItem(g, event)
-					c++
+			done := make(chan bool)
+			cevent := make(chan db.Event)
+			go findEvents(terms, cevent, done)
+			go func() {
+				ct := 0
+				for {
+					select {
+					case <-done:
+						g.Execute(func(g *c.Gui) error {
+							NewsList.SetTitle(fmt.Sprintf("%v event(s) found", ct))
+							return nil
+						})
+						return
+					case event := <-cevent:
+						g.Execute(func(g *c.Gui) error {
+							NewsList.AddItem(g, event)
+							NewsList.SetTitle(fmt.Sprintf("%v event(s) found so far...", ct))
+							return nil
+						})
+						ct++
+					}
 				}
-				if c == 0 {
-					NewsList.SetTitle("No events found")
-				} else {
-					NewsList.SetTitle(fmt.Sprintf("%v event(s) found", c))
-				}
-				return nil
-			})
+			}()
 		}
 	}
 
