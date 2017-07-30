@@ -121,7 +121,7 @@ func getAppDir() (string, error) {
 	dir := path.Join(usr.HomeDir, ".terminews")
 	if _, err := os.Stat(dir); err != nil {
 		if os.IsNotExist(err) {
-			if oserr := os.Mkdir(dir, 0666); oserr != nil {
+			if oserr := os.Mkdir(dir, 0700); oserr != nil {
 				return "", oserr
 			}
 		} else {
@@ -145,7 +145,7 @@ func main() {
 
 	// Setup logging
 	logfile := path.Join(appDir, "terminews.log")
-	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0700)
 	if err != nil {
 		log.Fatal("Failed to open logfile", err)
 	}
