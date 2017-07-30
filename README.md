@@ -3,8 +3,12 @@
 **terminews** is a terminal based application (TUI) which makes use of the [gocui](https://github.com/jroimartin/gocui) and [gofeed](https://github.com/mmcdole/gofeed) libraries and allows you to manage RSS resources and display their news feed. Currently it is only compatible with _Linux_ environments.
 
 
+[![asciicast](https://asciinema.org/a/WKvIugMqbohNtxqCZHHPDcWRr.png)](https://asciinema.org/a/WKvIugMqbohNtxqCZHHPDcWRr)
+
+
 ## Installation
 
+**terminews** is currently available only on _Linux_.
 ### Dependencies
 
 * [Sqlite3](https://www.sqlite.org/)
@@ -30,7 +34,8 @@ The terminal is split in 3 different areas:
 2. **News list** which contains the news feed (list of news' titles) of the currently selected site.
 3. **Summary** which contains extra information of the currently selected event.
 
-For both lists the items are displayed paged.
+![Layout](./screenshot.png)
+
 
 ### Key bindings
  Key combination | Description
