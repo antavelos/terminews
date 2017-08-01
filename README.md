@@ -56,9 +56,13 @@ The terminal is split in 3 different areas:
 <kbd>PgDn</kbd>|Moves to the next list page circularly
 <kbd>Ctrl</kbd><kbd>c</kbd>|Exits the application
 
-
 ## TODO
 - [x] Add search functionality among the existing sites.
 - [x] Display full news content.
 - [ ] Add tags to bookmarks
 - [ ] Apply caching
+
+## Credits
+* [GOCUI](https://github.com/jroimartin/gocui) for the UI
+* [gofeed](https://github.com/mmcdole/gofeed) for retrieving the RSS feed
+* [GoOse](https://github.com/advancedlogic/GoOse) for extracting article content
