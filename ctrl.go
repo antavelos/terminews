@@ -612,7 +612,7 @@ func LoadContent(g *c.Gui, v *c.View) error {
 				return nil
 			}
 			event := currItem.(db.Event)
-			CurrentContent = GetContent(event.Url)
+			CurrentContent, _ = GetContent(event.Url)
 			if err := UpdateContent(g, CurrentContent); err != nil {
 				log.Println("Error on UpdateContent", err)
 				return err
