@@ -216,17 +216,21 @@ func Quit(g *c.Gui, v *c.View) error {
 }
 
 func SwitchView(g *c.Gui, v *c.View) error {
-	g.SelFgColor = c.ColorGreen | c.AttrBold
-	if v == SitesList.View {
-		NewsList.Focus(g)
-		SitesList.Unfocus()
-		if strings.Contains(NewsList.Title, "bookmarks") {
-			g.SelFgColor = c.ColorMagenta | c.AttrBold
+	switch v.Name() {
+	case SITES_VIEW:
+		g.SelFgColor = c.ColorGreen | c.AttrBold
+		if v == SitesList.View {
+			NewsList.Focus(g)
+			SitesList.Unfocus()
+			if strings.Contains(NewsList.Title, "bookmarks") {
+				g.SelFgColor = c.ColorMagenta | c.AttrBold
+			}
 		}
-	} else {
+	case NEWS_VIEW:
 		SitesList.Focus(g)
 		NewsList.Unfocus()
 	}
+
 	return nil
 }
 
@@ -515,7 +519,9 @@ func LoadBookmarks(g *c.Gui, v *c.View) error {
 }
 
 func DeleteEntry(g *c.Gui, v *c.View) error {
-	if v == SitesList.View {
+	switch v.Name() {
+
+	case SITES_VIEW:
 		currItem := SitesList.CurrentItem()
 		if currItem == nil {
 			return nil
@@ -529,7 +535,7 @@ func DeleteEntry(g *c.Gui, v *c.View) error {
 			log.Println("Error on LoadSites", err)
 			return err
 		}
-	} else {
+	case NEWS_VIEW:
 		if strings.Contains(NewsList.Title, "My bookmarks") {
 			currItem := NewsList.CurrentItem()
 			if currItem == nil {
