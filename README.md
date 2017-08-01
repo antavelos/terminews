@@ -16,7 +16,7 @@
 
 ### From binary
 
-   You may download and run the binary from the [latest release](https://github.com/antavelos/terminews/releases)
+   You may download and run the binary from the [latest release](https://github.com/antavelos/terminews/releases/latest)
 
 ### From source code
 
