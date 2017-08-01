@@ -18,70 +18,82 @@
 package main
 
 import (
-	"fmt"
-	"golang.org/x/net/html"
-	"net/http"
+	// "fmt"
+	"github.com/advancedlogic/GoOse"
+	// "golang.org/x/net/html"
+	// "net/http"
 	"strings"
 )
 
-func ParseUrl(url string, ch chan string, done chan bool) {
-	resp, err := http.Get(url)
-	defer func() {
-		// Notify that we're done after this function
-		done <- true
-	}()
+// func ParseUrl(url string, ch chan string, done chan bool) {
+// 	resp, err := http.Get(url)
+// 	defer func() {
+// 		// Notify that we're done after this function
+// 		done <- true
+// 	}()
+// 	if err != nil {
+// 		return
+// 	}
+// 	b := resp.Body
+// 	defer b.Close() // close Body when the function returns
+
+// 	z := html.NewTokenizer(b)
+
+// 	inParagraph := false
+// 	for {
+// 		tt := z.Next()
+
+// 		switch tt {
+// 		case html.ErrorToken:
+// 			// End of the document, we're done
+// 			return
+// 		case html.StartTagToken:
+// 			t := z.Token()
+
+// 			// Check if the token is an <p> tag
+// 			isParagraph := t.Data == "p"
+// 			if isParagraph {
+// 				inParagraph = true
+// 			}
+// 		case html.EndTagToken:
+// 			t := z.Token()
+
+// 			isParagraph := t.Data == "p"
+// 			if isParagraph {
+// 				inParagraph = false
+// 			}
+// 		case html.TextToken:
+// 			if inParagraph {
+// 				t := fmt.Sprint(z.Token())
+// 				ch <- strings.TrimSpace(html.UnescapeString(t))
+// 			}
+// 		}
+// 	}
+// }
+
+// func GetContent(url string) []string {
+// 	ch := make(chan string)
+// 	done := make(chan bool)
+// 	go ParseUrl(url, ch, done)
+
+// 	content := []string{}
+// 	for {
+// 		select {
+// 		case text := <-ch:
+// 			content = append(content, text)
+// 		case <-done:
+// 			return content
+// 		}
+// 	}
+// }
+
+func GetContent(url string) ([]string, error) {
+	g := goose.New()
+	article, err := g.ExtractFromURL(url)
 	if err != nil {
-		return
+		return nil, err
 	}
-	b := resp.Body
-	defer b.Close() // close Body when the function returns
+	lines := strings.Split(article.CleanedText, "\n\n")
 
-	z := html.NewTokenizer(b)
-
-	inParagraph := false
-	for {
-		tt := z.Next()
-
-		switch tt {
-		case html.ErrorToken:
-			// End of the document, we're done
-			return
-		case html.StartTagToken:
-			t := z.Token()
-
-			// Check if the token is an <p> tag
-			isParagraph := t.Data == "p"
-			if isParagraph {
-				inParagraph = true
-			}
-		case html.EndTagToken:
-			t := z.Token()
-
-			isParagraph := t.Data == "p"
-			if isParagraph {
-				inParagraph = false
-			}
-		case html.TextToken:
-			if inParagraph {
-				t := fmt.Sprint(z.Token())
-				ch <- strings.TrimSpace(html.UnescapeString(t))
-			}
-		}
-	}
-}
-
-func GetContent(url string) []string {
-	ch := make(chan string)
-	done := make(chan bool)
-	go ParseUrl(url, ch, done)
-
-	content := []string{}
-	for {
-		select {
-		case text := <-ch:
-			content = append(content, text)
-		case <-done:
-			return content
-		}
-	}
+	return lines, nil
 }
