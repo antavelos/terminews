@@ -190,7 +190,7 @@ func main() {
 	SitesList.Focus(g)
 
 	// it loads the existing sites if any at the beginning
-	g.Execute(func(g *c.Gui) error {
+	g.Update(func(g *c.Gui) error {
 		if err := LoadSites(); err != nil {
 			log.Fatal("Error while loading sites", err)
 		}

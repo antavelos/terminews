@@ -352,7 +352,7 @@ func OnEnter(g *c.Gui, v *c.View) error {
 		NewsList.Focus(g)
 		g.SelFgColor = c.ColorGreen | c.AttrBold
 		NewsList.Title = " Fetching ... "
-		g.Execute(func(g *c.Gui) error {
+		g.Update(func(g *c.Gui) error {
 			events, err := DownloadEvents(site.Url)
 			if err != nil {
 				NewsList.Title = fmt.Sprintf(" Failed to load news from: %v ", site.Name)
@@ -376,7 +376,7 @@ func OnEnter(g *c.Gui, v *c.View) error {
 			if len(url) == 0 {
 				return nil
 			}
-			g.Execute(func(g *c.Gui) error {
+			g.Update(func(g *c.Gui) error {
 				feed, err := CheckUrl(url)
 				if err != nil {
 					setTopWindowTitle(g, PROMPT_VIEW, "Invalid URL, try again:")
@@ -428,13 +428,13 @@ func OnEnter(g *c.Gui, v *c.View) error {
 				for {
 					select {
 					case <-done:
-						g.Execute(func(g *c.Gui) error {
+						g.Update(func(g *c.Gui) error {
 							NewsList.SetTitle(fmt.Sprintf("%v event(s) found", ct))
 							return nil
 						})
 						return
 					case event := <-cevent:
-						g.Execute(func(g *c.Gui) error {
+						g.Update(func(g *c.Gui) error {
 							NewsList.AddItem(g, event)
 							NewsList.SetTitle(fmt.Sprintf("%v event(s) found so far...", ct))
 							return nil
@@ -452,7 +452,7 @@ func OnEnter(g *c.Gui, v *c.View) error {
 func AddBookmark(g *c.Gui, v *c.View) error {
 	var err error
 	if v.Name() == NEWS_VIEW {
-		g.Execute(func(g *c.Gui) error {
+		g.Update(func(g *c.Gui) error {
 			currItem := NewsList.CurrentItem()
 			if currItem == nil {
 				return nil
@@ -611,7 +611,7 @@ func LoadContent(g *c.Gui, v *c.View) error {
 		g.SelFgColor = c.ColorGreen | c.AttrBold
 		cv, _ := g.View(CONTENT_VIEW)
 		cv.Title = "Fetching..."
-		g.Execute(func(g *c.Gui) error {
+		g.Update(func(g *c.Gui) error {
 			ContentList.Focus(g)
 			currItem := NewsList.CurrentItem()
 			if currItem == nil {
