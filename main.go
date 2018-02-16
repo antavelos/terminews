@@ -34,6 +34,7 @@ const (
 	SUMMARY_VIEW = "summary"
 	PROMPT_VIEW  = "prompt"
 	CONTENT_VIEW = "content"
+	HELP_VIEW    = "help"
 )
 
 var (
@@ -96,6 +97,13 @@ func layout(g *c.Gui) error {
 		}
 	}
 
+	if _, err = g.View(HELP_VIEW); err == nil {
+		_, err = g.SetView(HELP_VIEW, tw/6, th/5, (tw*5)/6, (th*4)/5)
+		if err != nil && err != c.ErrUnknownView {
+			return err
+		}
+	}
+
 	if curW != tw || curH != th {
 		SitesList.ResetPages()
 		SitesList.Draw()
@@ -104,7 +112,6 @@ func layout(g *c.Gui) error {
 		if ContentList != nil {
 			ContentList.Reset()
 			UpdateContent(g, CurrentContent)
-			// ContentList.Draw()
 		}
 		curW = tw
 		curH = th
@@ -266,10 +273,12 @@ func main() {
 	if err = g.SetKeybinding(NEWS_VIEW, c.KeyCtrlO, c.ModAlt, OpenBrowser); err != nil {
 		log.Fatal("Failed to set keybindings")
 	}
+	if err = g.SetKeybinding("", c.KeyCtrlH, c.ModNone, Help); err != nil {
+		log.Fatal("Failed to set keybindings")
+	}
 	// run the mainloop
 	if err = g.MainLoop(); err != nil && err != c.ErrQuit {
 		log.Println("terminews exited unexpectedly: ", err)
 	}
-	log.Println("Exiting\n")
-
+	log.Println("Exiting")
 }

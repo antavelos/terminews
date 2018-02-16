@@ -137,6 +137,36 @@ func createPromptView(g *c.Gui, title string) error {
 	return err
 }
 
+func createHelpView(g *c.Gui, title string) error {
+	tw, th := g.Size()
+	v, err := g.SetView(HELP_VIEW, tw/6, th/5, (tw*5)/6, (th*4)/5)
+	if err != nil && err != c.ErrUnknownView {
+		return err
+	}
+	v.Wrap = true
+	setTopWindowTitle(g, HELP_VIEW, title)
+
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Tab"), "Focuses between the Sites list and the News list alternately\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Enter"), "Retrieves the news feed of the currently selected site or submits user input\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+O"), "Downloads the content of the currently selected event.\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+Alt+O"), "Opens the currently selected event using the default browser\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+n"), "Prompts the user to add a new site (URL)\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+f"), "Prompts the user to search among the existing sites. Multiple terms are allowed and they are used conjunctively\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+q"), "Closes any window (input prompt, event content) displayed on top of the main windows\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+b"), "Adds or removes the currently selected event in the bookmarks list\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+Alt+b"), "Displays the bookmarked events\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Del"), "Deletes the selected site of the selected bookmarked event depending on which list is currently focused\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("ArrowUp;"), "Moves to the previous list item circularly\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("ArrowDown;"), "Moves to the next list item circularly\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("PgUp"), "Moves to the previous list page circularly\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("PgDn"), "Moves to the next list page circularly\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+c"), "Exits the application\n\n")
+	fmt.Fprintf(v, " %v: %v", Bold.Sprint("Ctrl+h"), "Opens up the Help window\n\n")
+
+	_, err = g.SetCurrentView(HELP_VIEW)
+	return err
+}
+
 // deleteContentView deletes the current prompt view
 func deleteContentView(g *c.Gui) error {
 	g.Cursor = false
@@ -147,6 +177,12 @@ func deleteContentView(g *c.Gui) error {
 func deletePromptView(g *c.Gui) error {
 	g.Cursor = false
 	return g.DeleteView(PROMPT_VIEW)
+}
+
+// deleteHelpView deletes the current help view
+func deleteHelpView(g *c.Gui) error {
+	g.Cursor = false
+	return g.DeleteView(HELP_VIEW)
 }
 
 func setTopWindowTitle(g *c.Gui, view_name, title string) {
@@ -560,27 +596,29 @@ func RemoveTopView(g *c.Gui, v *c.View) error {
 
 	case PROMPT_VIEW:
 		SitesList.Focus(g)
-		if isBookmarksNews() {
-			g.SelFgColor = c.ColorMagenta | c.AttrBold
-		} else {
-			g.SelFgColor = c.ColorGreen | c.AttrBold
-		}
 		if err := deletePromptView(g); err != nil {
 			log.Println("Error on deletePromptView", err)
 			return err
 		}
 	case CONTENT_VIEW:
 		NewsList.Focus(g)
-		if isBookmarksNews() {
-			g.SelFgColor = c.ColorMagenta | c.AttrBold
-		} else {
-			g.SelFgColor = c.ColorGreen | c.AttrBold
-		}
 		if err := deleteContentView(g); err != nil {
 			log.Println("Error on deleteContentView", err)
 			return err
 		}
+	case HELP_VIEW:
+		NewsList.Focus(g)
+		if err := deleteHelpView(g); err != nil {
+			log.Println("Error on deleteHelpView", err)
+			return err
+		}
 	}
+	if isBookmarksNews() {
+		g.SelFgColor = c.ColorMagenta | c.AttrBold
+	} else {
+		g.SelFgColor = c.ColorGreen | c.AttrBold
+	}
+
 	return nil
 }
 
@@ -663,5 +701,14 @@ func OpenBrowser(g *c.Gui, v *c.View) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func Help(g *c.Gui, v *c.View) error {
+	if err := createHelpView(g, " Help "); err != nil {
+		log.Println("Error on createHelpView", err)
+		return err
+	}
+
 	return nil
 }
