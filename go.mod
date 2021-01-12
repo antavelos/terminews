@@ -9,4 +9,5 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/mmcdole/gofeed v1.1.0
 	github.com/nsf/termbox-go v0.0.0-20201124104050-ed494de23a00 // indirect
+	github.com/thatguystone/swan v0.0.0-20190904205542-d1079a5d0c05
 )
