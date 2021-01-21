@@ -254,13 +254,9 @@ func Quit(g *c.Gui, v *c.View) error {
 func SwitchView(g *c.Gui, v *c.View) error {
 	switch v.Name() {
 	case SITES_VIEW:
-		g.SelFgColor = c.ColorGreen | c.AttrBold
 		if v == SitesList.View {
 			NewsList.Focus(g)
 			SitesList.Unfocus()
-			if strings.Contains(NewsList.Title, "bookmarks") {
-				g.SelFgColor = c.ColorMagenta | c.AttrBold
-			}
 		}
 	case NEWS_VIEW:
 		SitesList.Focus(g)
@@ -386,7 +382,7 @@ func OnEnter(g *c.Gui, v *c.View) error {
 		Summary.Clear()
 		NewsList.Clear()
 		NewsList.Focus(g)
-		g.SelFgColor = c.ColorGreen | c.AttrBold
+
 		NewsList.Title = " Fetching ... "
 		g.Update(func(g *c.Gui) error {
 			events, err := DownloadEvents(site.Url)
@@ -438,7 +434,6 @@ func OnEnter(g *c.Gui, v *c.View) error {
 					return err
 				}
 				deletePromptView(g)
-				g.SelFgColor = c.ColorGreen | c.AttrBold
 				SitesList.Focus(g)
 
 				if err = LoadSites(); err != nil {
@@ -550,7 +545,6 @@ func LoadBookmarks(g *c.Gui, v *c.View) error {
 			return err
 		}
 	}
-	g.SelFgColor = c.ColorMagenta | c.AttrBold
 	return nil
 }
 
@@ -613,11 +607,6 @@ func RemoveTopView(g *c.Gui, v *c.View) error {
 			return err
 		}
 	}
-	if isBookmarksNews() {
-		g.SelFgColor = c.ColorMagenta | c.AttrBold
-	} else {
-		g.SelFgColor = c.ColorGreen | c.AttrBold
-	}
 
 	return nil
 }
@@ -646,7 +635,6 @@ func LoadContent(g *c.Gui, v *c.View) error {
 			log.Println("Error on createContentView", err)
 			return err
 		}
-		g.SelFgColor = c.ColorGreen | c.AttrBold
 		cv, _ := g.View(CONTENT_VIEW)
 		cv.Title = "Fetching..."
 		g.Update(func(g *c.Gui) error {

@@ -47,7 +47,7 @@ var (
 	CurrentBookmarks []db.Event
 	curW             int
 	curH             int
-	Bold             *color.Color
+	Bold             = color.New(color.Bold)
 )
 
 // relSize calculates the  sizes of the sites view width
@@ -139,11 +139,8 @@ func getAppDir() (string, error) {
 }
 
 func main() {
-
 	var v *c.View
 	var err error
-
-	Bold = color.New(color.Bold)
 
 	appDir, err := getAppDir()
 	if err != nil {
