@@ -18,6 +18,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/user"
@@ -35,6 +36,8 @@ const (
 	PROMPT_VIEW  = "prompt"
 	CONTENT_VIEW = "content"
 	HELP_VIEW    = "help"
+
+	appVersion = "1.2.1"
 )
 
 var (
@@ -139,6 +142,13 @@ func getAppDir() (string, error) {
 }
 
 func main() {
+	// If app is called with --version then display version flag & exit
+	if len(os.Args) == 2 {
+		if os.Args[1] == "--version" {
+			fmt.Println(appVersion)
+			return
+		}
+	}
 
 	var v *c.View
 	var err error
