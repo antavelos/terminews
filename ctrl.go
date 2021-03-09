@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os/exec"
 	"strings"
 
@@ -655,8 +656,11 @@ func LoadContent(g *c.Gui, v *c.View) error {
 			if currItem == nil {
 				return nil
 			}
+
+			site := SitesList.CurrentItem().(db.Site)
 			event := currItem.(db.Event)
-			CurrentContent, _ = GetContent(event.Url)
+
+			CurrentContent, _ = GetContent(getContentURL(site, event.Url))
 			if err := UpdateContent(g, CurrentContent); err != nil {
 				log.Println("Error on UpdateContent", err)
 				return err
@@ -711,4 +715,17 @@ func Help(g *c.Gui, v *c.View) error {
 	}
 
 	return nil
+}
+
+func getContentURL(site db.Site, contentUrl string) string {
+	if !strings.HasPrefix(contentUrl, "http") {
+		u, err := url.Parse(site.Url)
+		if err != nil {
+			return contentUrl // it would have failed anyway (todo: maybe log error message and display it to end user?)
+		}
+
+		return fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, strings.TrimPrefix(contentUrl, "/"))
+	}
+
+	return contentUrl
 }
