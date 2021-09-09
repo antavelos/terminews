@@ -9,14 +9,10 @@
 ## Installation
 
 **terminews** is currently available only on _Linux_.
-### Dependencies
-
-* [Sqlite3](https://www.sqlite.org/)
-	For storing site' data and bookmarking news.
 
 ### From binary
 
-   You may download and run the binary from the [latest release](https://github.com/antavelos/terminews/releases/latest)
+You may download and run the binary from the [latest release](https://github.com/antavelos/terminews/releases/latest).
 
 ### From source code
 
@@ -25,6 +21,30 @@
 	go build
 	./terminews
 
+### For Debian 11
+
+Terminews is available through the bullseye-backports.
+
+#### Enable the backports
+
+```
+# echo 'deb http://deb.debian.org/debian buster-backports main' >> /etc/apt/sources.list
+# apt update -y && apt upgrade -y
+```
+
+#### Install terminews
+
+```
+# apt install terminews/bullseye-backports
+```
+
+### For Ubuntu 21.04
+
+Terminews is available in universe since Ubuntu 21.04.
+
+```
+# apt install terminews
+```
 
 ## Usage
 
