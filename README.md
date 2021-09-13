@@ -8,7 +8,7 @@
 
 ## Installation
 
-**terminews** is currently available only on _Linux_.
+[![Packaging status](https://repology.org/badge/vertical-allrepos/terminews.svg)](https://repology.org/project/terminews/version)
 
 ### From binary
 
