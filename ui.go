@@ -52,7 +52,7 @@ func CreateList(v *c.View, ordered bool) *List {
 	return list
 }
 
-// IsEMpty indicates whether a list has items or not
+// IsEmpty indicates whether a list has items or not
 func (l *List) IsEmpty() bool {
 	return l.length() == 0
 }
